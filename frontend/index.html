@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>What Cat Are You?</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -21,10 +21,11 @@
     --radius-sm: 14px;
   }
 
-  *{ box-sizing: border-box; }
+  *{ box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html,body{ margin:0; padding:0; }
   body{
     min-height:100vh;
+    min-height:100dvh;
     font-family:'Inter', sans-serif;
     color: var(--ink);
     overflow-x:hidden;
@@ -42,18 +43,18 @@
     background-size: 36px 36px;
   }
 
+  /* Панель по умолчанию уже отцентрована — без "съезжания" после старта */
   .stage{
     position:relative;
     min-height:100vh;
+    min-height:100dvh;
     display:flex;
     flex-direction:column;
     align-items:center;
-    justify-content:flex-start;
-    padding: 28px 20px 40px;
+    justify-content:center;
+    padding: 84px 20px 40px;
     z-index:2;
-  }
-  .stage.quiz-active{
-    justify-content: center;
+    gap: 8px;
   }
 
   .title-block{
@@ -77,7 +78,7 @@
   }
 
   h1.display{
-    font-size: clamp(2.4rem, 6vw, 4.2rem);
+    font-size: clamp(2.1rem, 7vw, 4.2rem);
     color: var(--cream);
     text-align:center;
     margin: 0 0 8px;
@@ -97,14 +98,51 @@
     opacity:0.95;
   }
 
+  /* --- Переключатель языка --- */
+  .lang-switcher{
+    position: fixed;
+    top: max(16px, env(safe-area-inset-top));
+    right: 16px;
+    z-index: 80;
+    display:flex;
+    gap:6px;
+    background: rgba(36,24,50,0.35);
+    padding:6px;
+    border-radius:999px;
+    backdrop-filter: blur(4px);
+  }
+  .lang-btn{
+    font-family:'Baloo 2', sans-serif;
+    font-weight:700;
+    font-size:0.78rem;
+    letter-spacing:0.02em;
+    border:none;
+    background: transparent;
+    color: var(--cream);
+    padding:7px 12px;
+    border-radius:999px;
+    cursor:pointer;
+    touch-action: manipulation;
+    transition: all 0.15s ease;
+  }
+  .lang-btn:hover{ background: rgba(255,255,255,0.15); }
+  .lang-btn.active{
+    background: var(--lime);
+    color: var(--grape-deep);
+  }
+
   .panel-wrap{
     position:relative;
     z-index:3;
+    width:100%;
+    display:flex;
+    justify-content:center;
   }
   .panel{
-    width: min(420px, 88vw);
+    width: min(420px, 92vw);
     min-height: 260px;
-    max-height: 78vh;
+    max-height: 74vh;
+    max-height: 74dvh;
     background: var(--cream);
     border-radius: var(--radius-lg);
     padding: 28px 24px 24px;
@@ -112,6 +150,7 @@
     position:relative;
     transform-origin: center center;
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
   .panel-head{
     position: sticky;
@@ -120,21 +159,6 @@
     margin: -28px -24px 16px;
     padding: 28px 24px 8px;
     z-index: 2;
-  }
-
-  /* --- Панель "получает" от лапы --- */
-  .panel.rattled{
-    animation: panelRattle 0.7s cubic-bezier(.36,.07,.19,.97);
-  }
-  @keyframes panelRattle {
-    0%   { transform: translate(0,0) rotate(0deg); }
-    12%  { transform: translate(-10px, 4px) rotate(-3deg); }
-    26%  { transform: translate(9px, -6px) rotate(2.5deg); }
-    40%  { transform: translate(-7px, 5px) rotate(-2deg); }
-    55%  { transform: translate(6px, -3px) rotate(1.5deg); }
-    70%  { transform: translate(-4px, 2px) rotate(-1deg); }
-    85%  { transform: translate(2px, -1px) rotate(0.5deg); }
-    100% { transform: translate(0,0) rotate(0deg); }
   }
 
   .panel-head{
@@ -228,22 +252,28 @@
     background:white;
     border:2px solid var(--ink);
     border-radius:14px;
-    padding:8px 12px;
+    padding:10px 12px;
     font-family:'Inter';
     font-weight:500;
-    font-size:0.82rem;
-    line-height:1.3;
+    font-size:0.85rem;
+    line-height:1.35;
     cursor:pointer;
     color: var(--ink);
     transition: all 0.15s ease;
     display:flex;
     align-items:flex-start;
     gap:8px;
+    min-height:44px;
+    touch-action: manipulation;
   }
   .opt-btn:hover{
     background: var(--grape);
     color: white;
     transform: translateX(4px);
+  }
+  .opt-btn:active{
+    background: var(--grape);
+    color: white;
   }
   .opt-btn:hover .option-letter{
     background: white;
@@ -284,6 +314,8 @@
     font-size:0.95rem;
     cursor:pointer;
     transition: all 0.15s ease;
+    touch-action: manipulation;
+    min-height:44px;
   }
   .start-btn:hover{ background: var(--grape-deep); transform: translateY(-2px); }
 
@@ -371,7 +403,7 @@
 
   .fixed-restart{
     position: fixed;
-    bottom: 24px;
+    bottom: max(24px, env(safe-area-inset-bottom));
     left: 50%;
     transform: translateX(-50%);
     z-index: 70;
@@ -386,13 +418,14 @@
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.3s ease;
+    touch-action: manipulation;
   }
   .fixed-restart.visible{
     opacity: 1;
     pointer-events: auto;
   }
 
-  /* --- Лапа-хулиганка --- */
+  /* --- Лапа-хулиганка: только царапание когтями --- */
   .paw-wrap{
     position: fixed;
     top: 0;
@@ -411,16 +444,18 @@
     filter: drop-shadow(0 10px 16px rgba(36,24,50,0.4));
   }
 
-  /* --- Вариант 1: разрезающий слэш с царапинами --- */
+  /* Единственная анимация лапы: царапающий слэш через экран.
+     6 вариантов направления (горизонтальные и диагональные из разных
+     углов) задаются через CSS-переменные из JS, см. SLASH_VARIANTS. */
   .paw-wrap.slash{
     animation: pawSlash 0.5s cubic-bezier(.5,0,.5,1);
   }
   @keyframes pawSlash {
-    0%   { opacity:0; transform: translate(var(--slash-start-x), calc(50vh - 85px)) rotate(var(--slash-rot-a)) scale(1.1); }
-    20%  { opacity:1; transform: translate(var(--slash-start-x), calc(50vh - 85px)) rotate(var(--slash-rot-a)) scale(1.25); }
-    55%  { opacity:1; transform: translate(var(--slash-end-x), calc(50vh - 85px - 10px)) rotate(var(--slash-rot-b)) scale(1.3); }
-    75%  { opacity:1; transform: translate(var(--slash-end-x), calc(50vh - 85px - 10px)) rotate(var(--slash-rot-b)) scale(1.1); }
-    100% { opacity:0; transform: translate(var(--slash-end-x), calc(50vh - 85px - 10px)) rotate(var(--slash-rot-b)) scale(0.8); }
+    0%   { opacity:0; transform: translate(var(--slash-start-x), var(--slash-start-y)) rotate(var(--slash-rot-a)) scale(1.1); }
+    20%  { opacity:1; transform: translate(var(--slash-start-x), var(--slash-start-y)) rotate(var(--slash-rot-a)) scale(1.25); }
+    55%  { opacity:1; transform: translate(var(--slash-end-x), var(--slash-end-y)) rotate(var(--slash-rot-b)) scale(1.3); }
+    75%  { opacity:1; transform: translate(var(--slash-end-x), var(--slash-end-y)) rotate(var(--slash-rot-b)) scale(1.1); }
+    100% { opacity:0; transform: translate(var(--slash-end-x), var(--slash-end-y)) rotate(var(--slash-rot-b)) scale(0.8); }
   }
 
   .claw-marks{
@@ -429,7 +464,7 @@
     left: 50%;
     width: 340px;
     height: 340px;
-    transform: translate(-50%, -50%);
+    transform: translate(-50%, -50%) rotate(var(--claw-rotate, 0deg));
     z-index: 49;
     pointer-events: none;
     opacity: 0;
@@ -452,13 +487,6 @@
     15%  { opacity:1; }
     70%  { opacity:1; }
     100% { opacity:0; }
-  }
-  .panel.rise{
-    animation: panelRise 0.55s ease-out;
-  }
-  @keyframes panelRise{
-    0%   { transform: translateY(36px); opacity: 0.4; }
-    100% { transform: translateY(0); opacity: 1; }
   }
 
   .panel.enter{
@@ -507,29 +535,6 @@
     100% { transform: skewX(0deg) translateX(0); }
   }
 
-  /* --- Вариант 2: лапа утаскивает и наклоняет окно чата --- */
-  .panel.dragged{
-    animation: panelDrag 1s cubic-bezier(.22,.9,.32,1.1);
-  }
-  @keyframes panelDrag{
-    0%   { transform: translate(0,0) rotate(0deg); }
-    30%  { transform: translate(-34px, 6px) rotate(-6deg); }
-    55%  { transform: translate(-42px, 9px) rotate(-8deg); }
-    78%  { transform: translate(-18px, 4px) rotate(-3deg); }
-    100% { transform: translate(0,0) rotate(0deg); }
-  }
-  .paw-wrap.drag{
-    animation: pawDrag 1s cubic-bezier(.22,.9,.32,1.1);
-  }
-  @keyframes pawDrag{
-    0%   { opacity:0; transform: translate(calc(50vw + 40px), calc(50vh - 160px)) rotate(-8deg) scale(0.6); }
-    12%  { opacity:1; transform: translate(calc(50vw + 40px), calc(50vh - 160px)) rotate(-8deg) scale(1.05); }
-    30%  { opacity:1; transform: translate(calc(50vw + 2px), calc(50vh - 152px)) rotate(-16deg) scale(1.1); }
-    55%  { opacity:1; transform: translate(calc(50vw - 6px), calc(50vh - 148px)) rotate(-18deg) scale(1.1); }
-    78%  { opacity:1; transform: translate(calc(50vw + 18px), calc(50vh - 154px)) rotate(-12deg) scale(1.02); }
-    100% { opacity:0; transform: translate(calc(50vw + 40px), calc(50vh - 160px)) rotate(-6deg) scale(0.6); }
-  }
-
   footer.credit{
     position:fixed;
     bottom:10px;
@@ -542,20 +547,37 @@
     opacity:0.85;
   }
 
+  @media (max-width: 480px){
+    .stage{ padding: 76px 14px 32px; }
+    .panel{ width: 94vw; padding: 22px 18px 18px; max-height: 78dvh; }
+    .panel-head{ margin: -22px -18px 14px; padding: 22px 18px 8px; }
+    h1.display{ font-size: clamp(1.9rem, 9vw, 2.6rem); }
+    .lang-switcher{ top: max(10px, env(safe-area-inset-top)); right: 10px; padding:4px; gap:4px; }
+    .lang-btn{ padding:6px 10px; font-size:0.72rem; }
+    .opt-btn{ font-size:0.83rem; padding: 10px 10px; }
+    .bubble{ font-size:0.9rem; }
+    .fixed-restart{ padding: 11px 22px; font-size:0.86rem; }
+  }
+
   @media (prefers-reduced-motion: reduce){
-    .paw-wrap.slash, .paw-wrap.poke, .paw-wrap.drag{ animation:none; opacity:0; }
-    .panel.torn, .panel.dragged{ animation:none; }
+    .paw-wrap.slash{ animation:none; opacity:0; }
+    .panel.torn{ animation:none; }
     .claw-marks.show{ animation:none; opacity:0; }
-    .vase-group.falling{ animation:none; }
-    .shards.shatter .shard{ animation:none; }
   }
 </style>
 </head>
 <body>
 
+  <div class="lang-switcher" id="langSwitcher">
+    <button class="lang-btn" data-lang="uk" type="button">UA</button>
+    <button class="lang-btn" data-lang="ru" type="button">RU</button>
+    <button class="lang-btn" data-lang="en" type="button">EN</button>
+    <button class="lang-btn" data-lang="pl" type="button">PL</button>
+  </div>
+
   <div class="stage">
     <div id="titleBlock" class="title-block">
-      <h1 class="display">WHAT CAT<br>ARE YOU?</h1>
+      <h1 class="display" id="titleText">WHAT CAT<br>ARE YOU?</h1>
     </div>
 
     <div class="panel-wrap">
@@ -563,12 +585,13 @@
         <div class="panel-head">
           <div class="avatar">🐾</div>
           <div>
+            <!-- Имя питомца — не переводится, остаётся одинаковым на всех языках -->
             <div class="panel-title">Grisha</div>
           </div>
         </div>
 
         <div id="startBlock" class="start-block">
-          <p>Ready to find out?</p>
+          <p id="readyText">Ready to find out?</p>
           <button class="start-btn" id="startBtn">Start</button>
         </div>
 
@@ -579,7 +602,7 @@
 
   </div>
 
-  <!-- Лапа-хулиганка: влетает из случайного угла и творит разное непотребство -->
+  <!-- Лапа-хулиганка: только царапающий слэш, 6 вариантов направления -->
   <div class="paw-wrap" id="pawWrap">
     <svg class="paw" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
       <ellipse cx="50" cy="62" rx="30" ry="26" fill="#6C3CE0"/>
@@ -590,7 +613,7 @@
     </svg>
   </div>
 
-  <!-- Царапины от когтей — появляются при варианте "slash" -->
+  <!-- Царапины от когтей — появляются при царапающем слэше -->
   <svg class="claw-marks" id="clawMarks" viewBox="0 0 340 340" xmlns="http://www.w3.org/2000/svg">
     <line x1="50" y1="30" x2="130" y2="310" stroke="var(--ink)" stroke-width="7" stroke-linecap="round"/>
     <line x1="110" y1="15" x2="190" y2="325" stroke="var(--ink)" stroke-width="7" stroke-linecap="round"/>
@@ -600,7 +623,7 @@
   <!-- Марка с котиком — появляется и падает сверху после завершения теста -->
   <div class="stamp-wrap" id="stampWrap">
     <div class="stamp-inner">
-      <img id="stampImg" src="" alt="Твой котик">
+      <img id="stampImg" src="" alt="">
     </div>
   </div>
   <button class="fixed-restart" id="fixedRestartBtn">Start over</button>
@@ -618,6 +641,77 @@ let answeredCount = 0;
 // поменять, если URL сервиса когда-нибудь изменится
 const API_BASE_URL = "https://backend-278779667457.europe-west1.run.app";
 
+/* ---------------------------------------------------------------------
+   ЛОКАЛИЗАЦИЯ ИНТЕРФЕЙСА
+   Переключатель языка меняет только статический текст на странице
+   (заголовок, стартовый экран, кнопки, финальный лоадер). Сам диалог с
+   агентом ведётся агентом на выбранном языке — язык передаётся один раз
+   при старте сессии в теле POST /api/session/start как поле "language"
+   (коды: "uk", "ru", "en", "pl"), а бэкенд должен положить его в
+   session.state["language"] перед запуском ADK-агента.
+   Имя питомца ("Grisha") намеренно не переводится ни в одном языке.
+--------------------------------------------------------------------- */
+const translations = {
+  ru: {
+    title: "КАКОЙ ТЫ<br>КОТИК?",
+    ready: "Готов узнать?",
+    start: "Начать",
+    restart: "Начать заново",
+    loadingFinal: "Рисую твоего котика, это может занять секунд 10-15...",
+    altText: "Твой котик",
+  },
+  uk: {
+    title: "ЯКИЙ ТИ<br>КІТ?",
+    ready: "Готовий дізнатися?",
+    start: "Почати",
+    restart: "Почати спочатку",
+    loadingFinal: "Малюю твого котика, це може зайняти секунд 10-15...",
+    altText: "Твій котик",
+  },
+  en: {
+    title: "WHAT CAT<br>ARE YOU?",
+    ready: "Ready to find out?",
+    start: "Start",
+    restart: "Start over",
+    loadingFinal: "Drawing your cat, this might take 10-15 seconds...",
+    altText: "Your cat",
+  },
+  pl: {
+    title: "JAKIM JESTEŚ<br>KOTEM?",
+    ready: "Gotowy się dowiedzieć?",
+    start: "Zacznij",
+    restart: "Zacznij od nowa",
+    loadingFinal: "Rysuję twojego kota, to może potrwać 10-15 sekund...",
+    altText: "Twój kot",
+  },
+};
+
+function detectDefaultLang(){
+  const nav = (navigator.language || "ru").slice(0, 2).toLowerCase();
+  return translations[nav] ? nav : "ru";
+}
+
+let currentLang = detectDefaultLang();
+
+function applyLanguage(lang){
+  if (!translations[lang]) return;
+  currentLang = lang;
+  const t = translations[lang];
+
+  document.getElementById("titleText").innerHTML = t.title;
+  document.getElementById("readyText").textContent = t.ready;
+  startBtn.textContent = t.start;
+  fixedRestartBtn.textContent = t.restart;
+
+  document.querySelectorAll(".lang-btn").forEach(b => {
+    b.classList.toggle("active", b.dataset.lang === lang);
+  });
+}
+
+document.querySelectorAll(".lang-btn").forEach(btn => {
+  btn.addEventListener("click", () => applyLanguage(btn.dataset.lang));
+});
+
 const startBlock = document.getElementById("startBlock");
 const chat = document.getElementById("chat");
 const optionsArea = document.getElementById("optionsArea");
@@ -629,9 +723,9 @@ const stampWrap = document.getElementById("stampWrap");
 const stampImg = document.getElementById("stampImg");
 const fixedRestartBtn = document.getElementById("fixedRestartBtn");
 const titleBlock = document.getElementById("titleBlock");
-const stageEl = document.querySelector(".stage");
 
-let lastPawVariant = null;
+applyLanguage(currentLang);
+
 let testCompleted = false;
 
 startBtn.addEventListener("click", start);
@@ -677,7 +771,7 @@ function showLoading(isFinal){
         div.innerHTML = `
             <div class="loading-row">
                 <div class="spinner"></div>
-                <span>Рисую твоего котика, это может занять секунд 10-15...</span>
+                <span>${translations[currentLang].loadingFinal}</span>
             </div>`;
     } else {
         div.innerHTML = `
@@ -687,19 +781,47 @@ function showLoading(isFinal){
     chat.appendChild(div);
 }
 
-function clearPawClasses(){
-    pawWrap.classList.remove("slash", "drag");
-    panel.classList.remove("torn", "dragged");
-    clawMarks.classList.remove("show");
-}
+/* ---------------------------------------------------------------------
+   ЛАПА-ХУЛИГАНКА
+   Единственная анимация — царапающий слэш через экран. 6 вариантов
+   направления: горизонтальный слева-направо, справа-налево, и четыре
+   диагонали между противоположными углами экрана. Вариант выбирается
+   случайно и не повторяется два раза подряд.
+--------------------------------------------------------------------- */
+const SLASH_VARIANTS = [
+    // горизонтально: слева направо
+    { sx: "-25vw", sy: "calc(50vh - 85px)", ex: "125vw", ey: "calc(50vh - 95px)", rotA: "-30deg", rotB: "20deg", claw: "80deg" },
+    // горизонтально: справа налево
+    { sx: "125vw", sy: "calc(50vh - 75px)", ex: "-25vw", ey: "calc(50vh - 85px)", rotA: "210deg", rotB: "160deg", claw: "-80deg" },
+    // диагональ: верхний левый угол -> нижний правый угол
+    { sx: "-25vw", sy: "-20vh", ex: "115vw", ey: "105vh", rotA: "-45deg", rotB: "25deg", claw: "8deg" },
+    // диагональ: нижний правый угол -> верхний левый угол
+    { sx: "115vw", sy: "105vh", ex: "-25vw", ey: "-20vh", rotA: "135deg", rotB: "205deg", claw: "188deg" },
+    // диагональ: верхний правый угол -> нижний левый угол
+    { sx: "115vw", sy: "-20vh", ex: "-25vw", ey: "105vh", rotA: "225deg", rotB: "155deg", claw: "-42deg" },
+    // диагональ: нижний левый угол -> верхний правый угол
+    { sx: "-25vw", sy: "105vh", ex: "115vw", ey: "-20vh", rotA: "45deg", rotB: "-25deg", claw: "138deg" },
+];
+
+let lastSlashIndex = null;
 
 function doSlash(){
-    // Лапа быстро режет экран горизонтально, оставляя царапины на панели
-    const leftToRight = Math.random() > 0.5;
-    pawWrap.style.setProperty("--slash-start-x", leftToRight ? "-20vw" : "120vw");
-    pawWrap.style.setProperty("--slash-end-x", leftToRight ? "120vw" : "-20vw");
-    pawWrap.style.setProperty("--slash-rot-a", leftToRight ? "-30deg" : "210deg");
-    pawWrap.style.setProperty("--slash-rot-b", leftToRight ? "20deg" : "160deg");
+    let idx = Math.floor(Math.random() * SLASH_VARIANTS.length);
+    if (SLASH_VARIANTS.length > 1) {
+        while (idx === lastSlashIndex) {
+            idx = Math.floor(Math.random() * SLASH_VARIANTS.length);
+        }
+    }
+    lastSlashIndex = idx;
+    const v = SLASH_VARIANTS[idx];
+
+    pawWrap.style.setProperty("--slash-start-x", v.sx);
+    pawWrap.style.setProperty("--slash-start-y", v.sy);
+    pawWrap.style.setProperty("--slash-end-x", v.ex);
+    pawWrap.style.setProperty("--slash-end-y", v.ey);
+    pawWrap.style.setProperty("--slash-rot-a", v.rotA);
+    pawWrap.style.setProperty("--slash-rot-b", v.rotB);
+    clawMarks.style.setProperty("--claw-rotate", v.claw);
 
     pawWrap.classList.add("slash");
     setTimeout(() => {
@@ -708,14 +830,17 @@ function doSlash(){
     }, 180);
 }
 
-function doDrag(){
-    // Лапа хватает угол окна чата, утаскивает и слегка наклоняет его
-    pawWrap.classList.add("drag");
-    panel.classList.add("dragged");
+function pawTrouble(){
+    pawWrap.classList.remove("slash");
+    panel.classList.remove("torn");
+    clawMarks.classList.remove("show");
+    void pawWrap.offsetWidth; // форсируем reflow, чтобы анимация перезапустилась
+    doSlash();
 }
 
 function dropStamp(imageUrl, landTop){
     stampImg.src = imageUrl;
+    stampImg.alt = translations[currentLang].altText;
 
     // Ставим марку туда, где реально была панель на этой странице/экране,
     // а не в захардкоженную точку — иначе на разных экранах она попадёт
@@ -779,35 +904,22 @@ function dropStamp(imageUrl, landTop){
     };
 }
 
-function pawTrouble(){
-    clearPawClasses();
-    void pawWrap.offsetWidth; // форсируем reflow, чтобы анимация перезапустилась
-
-    const variants = [doSlash, doDrag];
-    let pool = variants;
-    if (lastPawVariant !== null && variants.length > 1) {
-        pool = variants.filter((_, i) => i !== lastPawVariant);
-    }
-    const chosenIndex = variants.indexOf(pool[Math.floor(Math.random() * pool.length)]);
-    lastPawVariant = chosenIndex;
-    variants[chosenIndex]();
-}
-
 async function start(){
     titleBlock.classList.add("hidden");
-    stageEl.classList.add("quiz-active");
-    // Убираем заголовок из потока полностью после завершения фейда (0.4s),
-    // чтобы панель могла по-настоящему занять центр экрана, а не просто
-    // визуально скрытый, но всё ещё занимающий место элемент
+    // Убираем заголовок из потока полностью после завершения фейда (0.4s) —
+    // панель уже отцентрована по умолчанию, ей никуда не нужно "съезжать"
     setTimeout(() => { titleBlock.style.display = "none"; }, 400);
-    panel.classList.add("rise");
     startBlock.style.display = "none";
     chat.style.display = "block";
     showLoading(false);
 
     const res = await fetch(
         `${API_BASE_URL}/api/session/start`,
-        { method:"POST" }
+        {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ language: currentLang })
+        }
     );
 
     const data = await res.json();
@@ -850,14 +962,17 @@ function restart(){
     startBlock.style.display = "block";
     fixedRestartBtn.classList.remove("visible");
 
+    titleBlock.style.display = "block";
+    requestAnimationFrame(() => titleBlock.classList.remove("hidden"));
+
     // Лапа "затягивает" панель обратно в центр с рандомной стороны экрана
-    panel.classList.remove("sunk", "rise", "enter");
+    panel.classList.remove("sunk", "enter");
     const fromLeft = Math.random() > 0.5;
     panel.style.setProperty("--enter-x", fromLeft ? "-140vw" : "140vw");
     void panel.offsetWidth;
     panel.classList.add("enter");
 
-    pawWrap.classList.remove("slash", "drag", "dragIn");
+    pawWrap.classList.remove("slash", "dragIn");
     pawWrap.style.setProperty("--dragin-start-x", fromLeft ? "-220px" : "calc(100vw + 60px)");
     pawWrap.style.setProperty("--dragin-rot-a", fromLeft ? "-20deg" : "200deg");
     pawWrap.style.setProperty("--dragin-rot-b", fromLeft ? "-14deg" : "14deg");
@@ -890,7 +1005,7 @@ async function sendAnswer(letter, optionText){
     if(data.image_url){
         testCompleted = true;
         const panelRect = panel.getBoundingClientRect(); // запоминаем, где была панель, пока она видима
-        panel.classList.remove("torn", "dragged");
+        panel.classList.remove("torn");
         panel.classList.add("sunk");
         setTimeout(() => { chat.style.display = "none"; optionsArea.innerHTML = ""; }, 480);
         dropStamp(data.image_url, panelRect.top);
