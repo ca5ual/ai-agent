@@ -26,7 +26,7 @@ load_dotenv(
     override=True,
 )
 
-from agent.agent import root_agent  # noqa: E402
+from agent.agent import root_agent 
 
 APP_NAME = "cat_personality_app"
 
