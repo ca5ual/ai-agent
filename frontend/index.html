@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>What Cat Are You?</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --coral: #FF5A36;
+    --coral-deep: #E1431F;
+    --grape: #6C3CE0;
+    --grape-deep: #4B26AA;
+    --lime: #C7F464;
+    --cream: #FFF8F0;
+    --ink: #241832;
+    --sun: #FFD23F;
+    --radius-lg: 28px;
+    --radius-sm: 14px;
+  }
+
+  *{ box-sizing: border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    min-height:100vh;
+    font-family:'Inter', sans-serif;
+    color: var(--ink);
+    overflow-x:hidden;
+    position:relative;
+  }
+
+  h1,h2,h3, .display, button, .tab-btn{
+    font-family:'Baloo 2', sans-serif;
+    font-weight:800;
+  }
+
+  body{
+    background-color: var(--coral);
+    background-image: radial-gradient(var(--coral-deep) 3px, transparent 3px);
+    background-size: 36px 36px;
+  }
+
+  .stage{
+    position:relative;
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:flex-start;
+    padding: 28px 20px 40px;
+    z-index:2;
+  }
+  .stage.quiz-active{
+    justify-content: center;
+  }
+
+  .title-block{
+    transition: opacity 0.4s ease;
+  }
+  .title-block.hidden{
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .eyebrow{
+    font-family:'Baloo 2', sans-serif;
+    font-weight:700;
+    font-size:14px;
+    letter-spacing:0.06em;
+    color: var(--cream);
+    background: var(--ink);
+    padding:6px 16px;
+    border-radius:999px;
+    margin-bottom:18px;
+  }
+
+  h1.display{
+    font-size: clamp(2.4rem, 6vw, 4.2rem);
+    color: var(--cream);
+    text-align:center;
+    margin: 0 0 8px;
+    line-height:1.02;
+    letter-spacing:-0.01em;
+    -webkit-text-stroke: 2px var(--ink);
+    text-shadow: 4px 4px 0 var(--ink);
+  }
+
+  .subhead{
+    font-size:1.05rem;
+    font-weight:500;
+    color: var(--cream);
+    text-align:center;
+    max-width:480px;
+    margin: 0 0 24px;
+    opacity:0.95;
+  }
+
+  .panel-wrap{
+    position:relative;
+    z-index:3;
+  }
+  .panel{
+    width: min(420px, 88vw);
+    min-height: 260px;
+    max-height: 78vh;
+    background: var(--cream);
+    border-radius: var(--radius-lg);
+    padding: 28px 24px 24px;
+    box-shadow: 0 24px 50px rgba(36,24,50,0.35);
+    position:relative;
+    transform-origin: center center;
+    overflow-y: auto;
+  }
+  .panel-head{
+    position: sticky;
+    top: -28px;
+    background: var(--cream);
+    margin: -28px -24px 16px;
+    padding: 28px 24px 8px;
+    z-index: 2;
+  }
+
+  /* --- Панель "получает" от лапы --- */
+  .panel.rattled{
+    animation: panelRattle 0.7s cubic-bezier(.36,.07,.19,.97);
+  }
+  @keyframes panelRattle {
+    0%   { transform: translate(0,0) rotate(0deg); }
+    12%  { transform: translate(-10px, 4px) rotate(-3deg); }
+    26%  { transform: translate(9px, -6px) rotate(2.5deg); }
+    40%  { transform: translate(-7px, 5px) rotate(-2deg); }
+    55%  { transform: translate(6px, -3px) rotate(1.5deg); }
+    70%  { transform: translate(-4px, 2px) rotate(-1deg); }
+    85%  { transform: translate(2px, -1px) rotate(0.5deg); }
+    100% { transform: translate(0,0) rotate(0deg); }
+  }
+
+  .panel-head{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin-bottom:16px;
+  }
+  .avatar{
+    width:40px; height:40px;
+    border-radius:50%;
+    background: var(--grape);
+    display:flex; align-items:center; justify-content:center;
+    font-size:20px;
+    flex-shrink:0;
+  }
+  .panel-title{ font-size:1rem; color:var(--ink); }
+  .panel-sub{ font-size:0.75rem; color:#8a7f99; font-weight:500; margin-top:1px; }
+
+  .bubble{
+    background: white;
+    border-radius: var(--radius-sm);
+    padding:14px 16px;
+    font-size:0.92rem;
+    line-height:1.4;
+    margin-bottom:14px;
+    box-shadow: 0 2px 6px rgba(36,24,50,0.06);
+    animation: bubbleIn 0.28s ease;
+  }
+  .bubble.me{
+    background: var(--lime);
+    margin-left:15%;
+  }
+  @keyframes bubbleIn{
+    from{ opacity:0; transform: translateY(6px) scale(0.97); }
+    to{ opacity:1; transform: translateY(0) scale(1); }
+  }
+
+  .options{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    margin-top:12px;
+  }
+
+  /* --- Индикатор загрузки --- */
+  .loading-bubble{
+    background: white;
+  }
+  .typing-dots{
+    display:flex;
+    gap:5px;
+    padding:4px 2px;
+  }
+  .typing-dots span{
+    width:8px; height:8px;
+    border-radius:50%;
+    background: var(--grape);
+    opacity:0.5;
+    animation: dotBounce 1.1s infinite;
+  }
+  .typing-dots span:nth-child(2){ animation-delay:0.15s; }
+  .typing-dots span:nth-child(3){ animation-delay:0.3s; }
+  @keyframes dotBounce{
+    0%, 60%, 100% { transform: translateY(0); opacity:0.5; }
+    30% { transform: translateY(-5px); opacity:1; }
+  }
+
+  .loading-final{
+    background: var(--lime);
+  }
+  .loading-row{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    font-weight:600;
+    font-size:0.88rem;
+    color: var(--grape-deep);
+  }
+  .spinner{
+    width:22px; height:22px;
+    border-radius:50%;
+    border: 3px solid rgba(75,38,170,0.25);
+    border-top-color: var(--grape-deep);
+    flex-shrink:0;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin{ to{ transform: rotate(360deg); } }
+  .opt-btn{
+    text-align:left;
+    background:white;
+    border:2px solid var(--ink);
+    border-radius:14px;
+    padding:8px 12px;
+    font-family:'Inter';
+    font-weight:500;
+    font-size:0.82rem;
+    line-height:1.3;
+    cursor:pointer;
+    color: var(--ink);
+    transition: all 0.15s ease;
+    display:flex;
+    align-items:flex-start;
+    gap:8px;
+  }
+  .opt-btn:hover{
+    background: var(--grape);
+    color: white;
+    transform: translateX(4px);
+  }
+  .opt-btn:hover .option-letter{
+    background: white;
+    color: var(--grape);
+  }
+  .option-letter{
+    flex-shrink:0;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    width:19px;
+    height:19px;
+    border-radius:50%;
+    background: var(--grape);
+    color:white;
+    font-size:0.7rem;
+    font-weight:700;
+    margin-top:1px;
+  }
+
+  /* --- Стартовый экран --- */
+  .start-block{
+    text-align:center;
+    padding: 8px 4px 4px;
+  }
+  .start-block p{
+    font-size:0.92rem;
+    color:#5b4d6b;
+    margin: 0 0 18px;
+    font-weight:500;
+  }
+  .start-btn{
+    background: var(--grape);
+    color: var(--cream);
+    border:none;
+    border-radius:999px;
+    padding:13px 28px;
+    font-size:0.95rem;
+    cursor:pointer;
+    transition: all 0.15s ease;
+  }
+  .start-btn:hover{ background: var(--grape-deep); transform: translateY(-2px); }
+
+  .restart-btn{
+    background: var(--lime);
+    color: var(--grape-deep);
+    border:none;
+    border-radius:999px;
+    padding:12px 22px;
+    font-size:0.9rem;
+    cursor:pointer;
+    width:100%;
+    margin-top:6px;
+  }
+  .restart-btn:hover{ filter: brightness(0.96); }
+
+  /* --- Марка с котиком, падает с силой и встаёт на место панели --- */
+  .stamp-wrap{
+    position: fixed;
+    top: -220px;
+    left: 50%;
+    width: min(300px, 78vw);
+    height: min(300px, 78vw);
+    z-index: 60;
+    cursor: pointer;
+    opacity: 0;
+    transform: translateX(-50%);
+  }
+  .stamp-wrap.dropped{
+    animation: stampFallHard 0.85s cubic-bezier(.7,0,.9,1) forwards;
+  }
+  @keyframes stampFallHard {
+    0%   { top: -220px; opacity:1; transform: translateX(-50%) rotate(-8deg) scale(0.9); }
+    70%  { top: calc(var(--land-top, 116px) - 8px);  opacity:1; transform: translateX(-50%) rotate(3deg) scale(1.06); }
+    82%  { top: calc(var(--land-top, 116px) + 2px);  opacity:1; transform: translateX(-50%) rotate(-2deg) scale(0.97); }
+    92%  { top: calc(var(--land-top, 116px) - 4px);  opacity:1; transform: translateX(-50%) rotate(1deg) scale(1.01); }
+    100% { top: var(--land-top, 116px);  opacity:1; transform: translateX(-50%) rotate(0deg) scale(1); }
+  }
+  body.impact{
+    animation: screenShake 0.4s cubic-bezier(.36,.07,.19,.97);
+  }
+  @keyframes screenShake{
+    0%, 100% { transform: translate(0,0); }
+    20% { transform: translate(-6px, 3px); }
+    40% { transform: translate(7px, -4px); }
+    60% { transform: translate(-5px, 2px); }
+    80% { transform: translate(4px, -2px); }
+  }
+  .stamp-wrap:hover{ filter: brightness(1.05); }
+  .stamp-inner{
+    width:100%;
+    height:100%;
+    padding: 10px;
+    background: white;
+    border-radius: 16px;
+    border: 4px dashed #d8cfe6;
+    box-shadow: 0 20px 45px rgba(36,24,50,0.5);
+  }
+  .stamp-inner img{
+    width:100%;
+    height:100%;
+    object-fit: cover;
+    display:block;
+    border-radius: 8px;
+  }
+
+  .smoke-puff{
+    position: fixed;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.55);
+    filter: blur(3px);
+    z-index: 59;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .smoke-puff.puff{
+    animation: smokeOut 0.7s ease-out forwards;
+  }
+  @keyframes smokeOut{
+    0%   { opacity:0.7; transform: translate(0,0) scale(0.6); }
+    100% { opacity:0; transform: translate(var(--sx), var(--sy)) scale(1.6); }
+  }
+
+  .fixed-restart{
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 70;
+    background: var(--lime);
+    color: var(--grape-deep);
+    border: none;
+    border-radius: 999px;
+    padding: 12px 26px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    box-shadow: 0 8px 20px rgba(36,24,50,0.3);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+  }
+  .fixed-restart.visible{
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* --- Лапа-хулиганка --- */
+  .paw-wrap{
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 170px;
+    height: 170px;
+    z-index: 50;
+    pointer-events: none;
+    opacity: 0;
+    transform: translate(-200px, -200px) rotate(0deg) scale(0.6);
+  }
+  .paw{
+    width:100%;
+    height:100%;
+    transform-origin: 50% 60%;
+    filter: drop-shadow(0 10px 16px rgba(36,24,50,0.4));
+  }
+
+  /* --- Вариант 1: разрезающий слэш с царапинами --- */
+  .paw-wrap.slash{
+    animation: pawSlash 0.5s cubic-bezier(.5,0,.5,1);
+  }
+  @keyframes pawSlash {
+    0%   { opacity:0; transform: translate(var(--slash-start-x), calc(50vh - 85px)) rotate(var(--slash-rot-a)) scale(1.1); }
+    20%  { opacity:1; transform: translate(var(--slash-start-x), calc(50vh - 85px)) rotate(var(--slash-rot-a)) scale(1.25); }
+    55%  { opacity:1; transform: translate(var(--slash-end-x), calc(50vh - 85px - 10px)) rotate(var(--slash-rot-b)) scale(1.3); }
+    75%  { opacity:1; transform: translate(var(--slash-end-x), calc(50vh - 85px - 10px)) rotate(var(--slash-rot-b)) scale(1.1); }
+    100% { opacity:0; transform: translate(var(--slash-end-x), calc(50vh - 85px - 10px)) rotate(var(--slash-rot-b)) scale(0.8); }
+  }
+
+  .claw-marks{
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    width: 340px;
+    height: 340px;
+    transform: translate(-50%, -50%);
+    z-index: 49;
+    pointer-events: none;
+    opacity: 0;
+  }
+  .claw-marks line{
+    stroke-dasharray: 420;
+    stroke-dashoffset: 420;
+  }
+  .claw-marks.show{
+    animation: clawShow 0.6s ease-out forwards;
+  }
+  .claw-marks.show line{
+    animation: clawDraw 0.35s ease-out forwards;
+  }
+  @keyframes clawDraw{
+    to{ stroke-dashoffset: 0; }
+  }
+  @keyframes clawShow{
+    0%   { opacity:0; }
+    15%  { opacity:1; }
+    70%  { opacity:1; }
+    100% { opacity:0; }
+  }
+  .panel.rise{
+    animation: panelRise 0.55s ease-out;
+  }
+  @keyframes panelRise{
+    0%   { transform: translateY(36px); opacity: 0.4; }
+    100% { transform: translateY(0); opacity: 1; }
+  }
+
+  .panel.enter{
+    animation: panelDragIn 0.95s cubic-bezier(.22,.9,.32,1.05);
+  }
+  @keyframes panelDragIn{
+    0%   { transform: translateX(var(--enter-x, -140vw)) rotate(-8deg); opacity:0; }
+    58%  { transform: translateX(26px) rotate(4deg); opacity:1; }
+    78%  { transform: translateX(-12px) rotate(-2deg); opacity:1; }
+    100% { transform: translateX(0) rotate(0deg); opacity:1; }
+  }
+
+  .paw-wrap.dragIn{
+    animation: pawDragIn 0.95s cubic-bezier(.22,.9,.32,1.05);
+  }
+  @keyframes pawDragIn{
+    0%   { opacity:0; transform: translate(var(--dragin-start-x), calc(50vh - 160px)) rotate(var(--dragin-rot-a)) scale(0.6); }
+    12%  { opacity:1; transform: translate(var(--dragin-start-x), calc(50vh - 160px)) rotate(var(--dragin-rot-a)) scale(1.05); }
+    58%  { opacity:1; transform: translate(calc(50vw - 85px + 20px), calc(50vh - 148px)) rotate(var(--dragin-rot-b)) scale(1.12); }
+    78%  { opacity:1; transform: translate(calc(50vw - 85px - 6px), calc(50vh - 150px)) rotate(calc(var(--dragin-rot-b) * -0.6)) scale(1.05); }
+    100% { opacity:0; transform: translate(calc(50vw - 85px), calc(50vh - 150px)) rotate(0deg) scale(0.7); }
+  }
+
+  .stamp-wrap.exit{
+    animation: stampExit 0.55s ease-in forwards;
+  }
+  @keyframes stampExit{
+    0%   { opacity:1; }
+    100% { top: 140vh; opacity:0; transform: translateX(-50%) rotate(30deg) scale(0.7); }
+  }
+  .panel.sunk{
+    animation: panelSink 0.5s cubic-bezier(.5,0,.85,1) forwards;
+  }
+  @keyframes panelSink{
+    0%   { transform: translateY(0) scale(1); opacity:1; }
+    100% { transform: translateY(140px) scale(0.85); opacity:0; }
+  }
+  .panel.torn{
+    animation: panelTorn 0.5s ease-out;
+  }
+  @keyframes panelTorn {
+    0%   { transform: skewX(0deg) translateX(0); }
+    25%  { transform: skewX(-3deg) translateX(-6px); }
+    50%  { transform: skewX(2deg) translateX(4px); }
+    75%  { transform: skewX(-1deg) translateX(-2px); }
+    100% { transform: skewX(0deg) translateX(0); }
+  }
+
+  /* --- Вариант 2: лапа утаскивает и наклоняет окно чата --- */
+  .panel.dragged{
+    animation: panelDrag 1s cubic-bezier(.22,.9,.32,1.1);
+  }
+  @keyframes panelDrag{
+    0%   { transform: translate(0,0) rotate(0deg); }
+    30%  { transform: translate(-34px, 6px) rotate(-6deg); }
+    55%  { transform: translate(-42px, 9px) rotate(-8deg); }
+    78%  { transform: translate(-18px, 4px) rotate(-3deg); }
+    100% { transform: translate(0,0) rotate(0deg); }
+  }
+  .paw-wrap.drag{
+    animation: pawDrag 1s cubic-bezier(.22,.9,.32,1.1);
+  }
+  @keyframes pawDrag{
+    0%   { opacity:0; transform: translate(calc(50vw + 40px), calc(50vh - 160px)) rotate(-8deg) scale(0.6); }
+    12%  { opacity:1; transform: translate(calc(50vw + 40px), calc(50vh - 160px)) rotate(-8deg) scale(1.05); }
+    30%  { opacity:1; transform: translate(calc(50vw + 2px), calc(50vh - 152px)) rotate(-16deg) scale(1.1); }
+    55%  { opacity:1; transform: translate(calc(50vw - 6px), calc(50vh - 148px)) rotate(-18deg) scale(1.1); }
+    78%  { opacity:1; transform: translate(calc(50vw + 18px), calc(50vh - 154px)) rotate(-12deg) scale(1.02); }
+    100% { opacity:0; transform: translate(calc(50vw + 40px), calc(50vh - 160px)) rotate(-6deg) scale(0.6); }
+  }
+
+  footer.credit{
+    position:fixed;
+    bottom:10px;
+    left:50%;
+    transform:translateX(-50%);
+    z-index:3;
+    font-size:0.78rem;
+    font-weight:600;
+    color: var(--cream);
+    opacity:0.85;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .paw-wrap.slash, .paw-wrap.poke, .paw-wrap.drag{ animation:none; opacity:0; }
+    .panel.torn, .panel.dragged{ animation:none; }
+    .claw-marks.show{ animation:none; opacity:0; }
+    .vase-group.falling{ animation:none; }
+    .shards.shatter .shard{ animation:none; }
+  }
+</style>
+</head>
+<body>
+
+  <div class="stage">
+    <div id="titleBlock" class="title-block">
+      <h1 class="display">WHAT CAT<br>ARE YOU?</h1>
+    </div>
+
+    <div class="panel-wrap">
+      <div class="panel" id="panel">
+        <div class="panel-head">
+          <div class="avatar">🐾</div>
+          <div>
+            <div class="panel-title">Grisha</div>
+          </div>
+        </div>
+
+        <div id="startBlock" class="start-block">
+          <p>Ready to find out?</p>
+          <button class="start-btn" id="startBtn">Start</button>
+        </div>
+
+        <div id="chat" style="display:none;"></div>
+        <div class="options" id="optionsArea"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Лапа-хулиганка: влетает из случайного угла и творит разное непотребство -->
+  <div class="paw-wrap" id="pawWrap">
+    <svg class="paw" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <ellipse cx="50" cy="62" rx="30" ry="26" fill="#6C3CE0"/>
+      <circle cx="26" cy="38" r="12" fill="#6C3CE0"/>
+      <circle cx="50" cy="26" r="13" fill="#6C3CE0"/>
+      <circle cx="74" cy="38" r="12" fill="#6C3CE0"/>
+      <ellipse cx="50" cy="64" rx="10" ry="8" fill="#C7F464"/>
+    </svg>
+  </div>
+
+  <!-- Царапины от когтей — появляются при варианте "slash" -->
+  <svg class="claw-marks" id="clawMarks" viewBox="0 0 340 340" xmlns="http://www.w3.org/2000/svg">
+    <line x1="50" y1="30" x2="130" y2="310" stroke="var(--ink)" stroke-width="7" stroke-linecap="round"/>
+    <line x1="110" y1="15" x2="190" y2="325" stroke="var(--ink)" stroke-width="7" stroke-linecap="round"/>
+    <line x1="175" y1="5" x2="255" y2="335" stroke="var(--ink)" stroke-width="7" stroke-linecap="round"/>
+  </svg>
+
+  <!-- Марка с котиком — появляется и падает сверху после завершения теста -->
+  <div class="stamp-wrap" id="stampWrap">
+    <div class="stamp-inner">
+      <img id="stampImg" src="" alt="Твой котик">
+    </div>
+  </div>
+  <button class="fixed-restart" id="fixedRestartBtn">Start over</button>
+
+  <div class="smoke-puff" id="smoke1" style="--sx:-30px; --sy:-8px;"></div>
+  <div class="smoke-puff" id="smoke2" style="--sx:10px; --sy:-22px;"></div>
+  <div class="smoke-puff" id="smoke3" style="--sx:-14px; --sy:-26px;"></div>
+  <div class="smoke-puff" id="smoke4" style="--sx:26px; --sy:-6px;"></div>
+
+<script>
+let sessionId = null;
+let answeredCount = 0;
+
+// Адрес твоего backend на Cloud Run — единственное место, которое нужно
+// поменять, если URL сервиса когда-нибудь изменится
+const API_BASE_URL = "https://backend-278779667457.europe-west1.run.app";
+
+const startBlock = document.getElementById("startBlock");
+const chat = document.getElementById("chat");
+const optionsArea = document.getElementById("optionsArea");
+const startBtn = document.getElementById("startBtn");
+const pawWrap = document.getElementById("pawWrap");
+const clawMarks = document.getElementById("clawMarks");
+const panel = document.getElementById("panel");
+const stampWrap = document.getElementById("stampWrap");
+const stampImg = document.getElementById("stampImg");
+const fixedRestartBtn = document.getElementById("fixedRestartBtn");
+const titleBlock = document.getElementById("titleBlock");
+const stageEl = document.querySelector(".stage");
+
+let lastPawVariant = null;
+let testCompleted = false;
+
+startBtn.addEventListener("click", start);
+
+// Разбирает ответ агента на "сам вопрос" и список вариантов A-H с полным
+// текстом каждого варианта — агент присылает варианты в предсказуемом
+// формате "A) текст", это и парсим, чтобы не дублировать варианты и
+// текстом в пузыре, и кнопками одновременно
+function parseAgentReply(text){
+    const lines = text.split("\n");
+    const optionRegex = /^\s*([A-H])\)\s*(.+)$/;
+    const options = [];
+    const stemLines = [];
+
+    for (const line of lines) {
+        const match = line.match(optionRegex);
+        if (match) {
+            options.push({ letter: match[1], text: match[2].trim() });
+        } else if (line.trim()) {
+            stemLines.push(line.trim());
+        }
+    }
+
+    return { stem: stemLines.join("\n"), options };
+}
+
+function showQuestion(text, sender="bot"){
+    // Показываем только текущее сообщение, а не копим историю —
+    // окно чата всегда одной высоты, не растёт с каждым вопросом
+    chat.innerHTML = "";
+    const div = document.createElement("div");
+    div.className = "bubble" + (sender === "user" ? " me" : "");
+    div.innerHTML = text.replace(/\n/g, "<br>");
+    chat.appendChild(div);
+}
+
+function showLoading(isFinal){
+    chat.innerHTML = "";
+    const div = document.createElement("div");
+    div.className = "bubble loading-bubble" + (isFinal ? " loading-final" : "");
+
+    if (isFinal) {
+        div.innerHTML = `
+            <div class="loading-row">
+                <div class="spinner"></div>
+                <span>Рисую твоего котика, это может занять секунд 10-15...</span>
+            </div>`;
+    } else {
+        div.innerHTML = `
+            <div class="typing-dots"><span></span><span></span><span></span></div>`;
+    }
+
+    chat.appendChild(div);
+}
+
+function clearPawClasses(){
+    pawWrap.classList.remove("slash", "drag");
+    panel.classList.remove("torn", "dragged");
+    clawMarks.classList.remove("show");
+}
+
+function doSlash(){
+    // Лапа быстро режет экран горизонтально, оставляя царапины на панели
+    const leftToRight = Math.random() > 0.5;
+    pawWrap.style.setProperty("--slash-start-x", leftToRight ? "-20vw" : "120vw");
+    pawWrap.style.setProperty("--slash-end-x", leftToRight ? "120vw" : "-20vw");
+    pawWrap.style.setProperty("--slash-rot-a", leftToRight ? "-30deg" : "210deg");
+    pawWrap.style.setProperty("--slash-rot-b", leftToRight ? "20deg" : "160deg");
+
+    pawWrap.classList.add("slash");
+    setTimeout(() => {
+        panel.classList.add("torn");
+        clawMarks.classList.add("show");
+    }, 180);
+}
+
+function doDrag(){
+    // Лапа хватает угол окна чата, утаскивает и слегка наклоняет его
+    pawWrap.classList.add("drag");
+    panel.classList.add("dragged");
+}
+
+function dropStamp(imageUrl, landTop){
+    stampImg.src = imageUrl;
+
+    // Ставим марку туда, где реально была панель на этой странице/экране,
+    // а не в захардкоженную точку — иначе на разных экранах она попадёт
+    // то в текст заголовка, то мимо
+    if (typeof landTop === "number") {
+        stampWrap.style.setProperty("--land-top", landTop + "px");
+    }
+
+    stampWrap.classList.remove("dropped");
+    void stampWrap.offsetWidth;
+    stampWrap.classList.add("dropped");
+
+    // Момент "удара" — тряска экрана и дым, синхронно с 70% отметкой анимации (0.85s * 0.7 ≈ 595ms)
+    const smokeEls = [
+        document.getElementById("smoke1"),
+        document.getElementById("smoke2"),
+        document.getElementById("smoke3"),
+        document.getElementById("smoke4"),
+    ];
+    setTimeout(() => {
+        document.body.classList.remove("impact");
+        void document.body.offsetWidth;
+        document.body.classList.add("impact");
+
+        const centerX = window.innerWidth / 2;
+        smokeEls.forEach(el => {
+            el.style.left = centerX + "px";
+            el.style.top = "230px";
+            el.classList.remove("puff");
+            void el.offsetWidth;
+            el.classList.add("puff");
+        });
+    }, 590);
+
+    // Кнопка "начать заново" появляется после того, как всё улеглось
+    setTimeout(() => {
+        fixedRestartBtn.classList.add("visible");
+    }, 900);
+
+    stampWrap.onclick = async () => {
+        try {
+            // Скачиваем через fetch+blob, а не напрямую через <a download>,
+            // потому что для кросс-доменных ссылок (наш GCS-бакет — другой
+            // домен, чем страница) атрибут download браузер часто игнорирует
+            const res = await fetch(imageUrl);
+            const blob = await res.blob();
+            const blobUrl = URL.createObjectURL(blob);
+
+            const link = document.createElement("a");
+            link.href = blobUrl;
+            link.download = "my-cat.png";
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(blobUrl);
+        } catch (err) {
+            // Если скачивание не удалось (например, CORS на бакете не настроен) —
+            // как минимум открываем картинку в новой вкладке
+            window.open(imageUrl, "_blank");
+        }
+    };
+}
+
+function pawTrouble(){
+    clearPawClasses();
+    void pawWrap.offsetWidth; // форсируем reflow, чтобы анимация перезапустилась
+
+    const variants = [doSlash, doDrag];
+    let pool = variants;
+    if (lastPawVariant !== null && variants.length > 1) {
+        pool = variants.filter((_, i) => i !== lastPawVariant);
+    }
+    const chosenIndex = variants.indexOf(pool[Math.floor(Math.random() * pool.length)]);
+    lastPawVariant = chosenIndex;
+    variants[chosenIndex]();
+}
+
+async function start(){
+    titleBlock.classList.add("hidden");
+    stageEl.classList.add("quiz-active");
+    // Убираем заголовок из потока полностью после завершения фейда (0.4s),
+    // чтобы панель могла по-настоящему занять центр экрана, а не просто
+    // визуально скрытый, но всё ещё занимающий место элемент
+    setTimeout(() => { titleBlock.style.display = "none"; }, 400);
+    panel.classList.add("rise");
+    startBlock.style.display = "none";
+    chat.style.display = "block";
+    showLoading(false);
+
+    const res = await fetch(
+        `${API_BASE_URL}/api/session/start`,
+        { method:"POST" }
+    );
+
+    const data = await res.json();
+    sessionId = data.session_id;
+
+    const parsed = parseAgentReply(data.reply);
+    showQuestion(parsed.stem);
+    createAnswerButtons(parsed.options);
+}
+
+function createAnswerButtons(options){
+    if (testCompleted) return; // страховка: после завершения теста кнопок A-H быть не должно
+    optionsArea.innerHTML = "";
+
+    options.forEach(opt => {
+        const btn = document.createElement("button");
+        btn.className = "opt-btn";
+        btn.innerHTML = `<span class="option-letter">${opt.letter}</span>${opt.text}`;
+        btn.onclick = () => sendAnswer(opt.letter, opt.text);
+        optionsArea.appendChild(btn);
+    });
+}
+
+fixedRestartBtn.addEventListener("click", restart);
+
+function restart(){
+    // Марка падает вниз за пределы экрана и пропадает
+    stampWrap.classList.add("exit");
+    setTimeout(() => {
+        stampWrap.classList.remove("dropped", "exit");
+        stampImg.src = "";
+    }, 560);
+
+    sessionId = null;
+    answeredCount = 0;
+    testCompleted = false;
+    chat.innerHTML = "";
+    optionsArea.innerHTML = "";
+    chat.style.display = "none";
+    startBlock.style.display = "block";
+    fixedRestartBtn.classList.remove("visible");
+
+    // Лапа "затягивает" панель обратно в центр с рандомной стороны экрана
+    panel.classList.remove("sunk", "rise", "enter");
+    const fromLeft = Math.random() > 0.5;
+    panel.style.setProperty("--enter-x", fromLeft ? "-140vw" : "140vw");
+    void panel.offsetWidth;
+    panel.classList.add("enter");
+
+    pawWrap.classList.remove("slash", "drag", "dragIn");
+    pawWrap.style.setProperty("--dragin-start-x", fromLeft ? "-220px" : "calc(100vw + 60px)");
+    pawWrap.style.setProperty("--dragin-rot-a", fromLeft ? "-20deg" : "200deg");
+    pawWrap.style.setProperty("--dragin-rot-b", fromLeft ? "-14deg" : "14deg");
+    void pawWrap.offsetWidth;
+    pawWrap.classList.add("dragIn");
+}
+
+async function sendAnswer(letter, optionText){
+    if (testCompleted) return; // страховка: не даём отправить ответ после завершения теста
+
+    pawTrouble();
+    optionsArea.innerHTML = "";
+    answeredCount += 1;
+
+    // 8-й ответ почти наверняка запускает генерацию картинки — показываем
+    // более информативный лоадер вместо обычных "думающих" точек
+    showLoading(answeredCount >= 8);
+
+    const res = await fetch(
+        `${API_BASE_URL}/api/chat`,
+        {
+            method:"POST",
+            headers:{ "Content-Type":"application/json" },
+            body:JSON.stringify({ session_id: sessionId, message: letter })
+        }
+    );
+
+    const data = await res.json();
+
+    if(data.image_url){
+        testCompleted = true;
+        const panelRect = panel.getBoundingClientRect(); // запоминаем, где была панель, пока она видима
+        panel.classList.remove("torn", "dragged");
+        panel.classList.add("sunk");
+        setTimeout(() => { chat.style.display = "none"; optionsArea.innerHTML = ""; }, 480);
+        dropStamp(data.image_url, panelRect.top);
+    } else {
+        const parsed = parseAgentReply(data.reply);
+        showQuestion(parsed.stem);
+        createAnswerButtons(parsed.options);
+    }
+}
+</script>
+
+</body>
+</html>
