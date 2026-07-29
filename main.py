@@ -26,7 +26,7 @@ load_dotenv(
     override=True,
 )
 
-from agent.agent import root_agent 
+from agent.agent import get_agent_for_language
 
 APP_NAME = "cat_personality_app"
 
@@ -42,11 +42,24 @@ app.add_middleware(
 )
 
 session_service = InMemorySessionService()
-runner = Runner(
-    app_name=APP_NAME,
-    agent=root_agent,
-    session_service=session_service,
-)
+
+# Кэш runners для каждого языка
+runners_cache = {}
+
+def get_runner(language: str = "en"):
+    """Получает или создаёт runner для агента выбранного языка."""
+    if language not in runners_cache:
+        agent = get_agent_for_language(language)
+        runners_cache[language] = Runner(
+            app_name=APP_NAME,
+            agent=agent,
+            session_service=session_service,
+        )
+    return runners_cache[language]
+
+
+class StartSessionRequest(BaseModel):
+    language: str = "ru"
 
 
 class StartSessionResponse(BaseModel):
@@ -64,7 +77,9 @@ class ChatResponse(BaseModel):
     image_url: str | None = None
 
 
-async def _run_agent_turn(session_id: str, user_id: str, message: str) -> tuple[str, str | None]:
+async def _run_agent_turn(
+    session_id: str, user_id: str, message: str, language: str = "ru"
+) -> tuple[str, str | None]:
     """Прогоняет одно сообщение пользователя через агента и собирает финальный ответ.
 
     Важно: результат вызова tool (function_response) обычно приходит в
@@ -72,6 +87,16 @@ async def _run_agent_turn(session_id: str, user_id: str, message: str) -> tuple[
     Поэтому image_url ищем по ВСЕМ событиям прохода, а не только там,
     где is_final_response() == True.
     """
+    # Сохрани язык в session state, чтобы было видно какой язык используется
+    session = await session_service.get_session(session_id)
+    if session and not hasattr(session, 'state'):
+        session.state = {}
+    if session:
+        session.state["language"] = language
+    
+    # Получаем runner для нужного языка
+    runner = get_runner(language)
+    
     content = types.Content(role="user", parts=[types.Part(text=message)])
 
     final_text = ""
@@ -98,10 +123,11 @@ async def _run_agent_turn(session_id: str, user_id: str, message: str) -> tuple[
 
 
 @app.post("/api/session/start", response_model=StartSessionResponse)
-async def start_session():
+async def start_session(request: StartSessionRequest):
     """Создаёт новую сессию и получает от агента приветственное сообщение."""
     session_id = str(uuid.uuid4())
     user_id = session_id  # для MVP один пользователь = одна сессия
+    language = request.language  # получаем язык из запроса
 
     try:
         await session_service.create_session(
@@ -109,8 +135,8 @@ async def start_session():
         )
 
         # "Пинаем" агента пустым приветственным сообщением, чтобы он поздоровался
-        # и задал первый вопрос
-        reply, _ = await _run_agent_turn(session_id, user_id, "Привет!")
+        # и задал первый вопрос. Передаём язык для использования в ответе.
+        reply, _ = await _run_agent_turn(session_id, user_id, "Привет!", language=language)
     except Exception:
         # Полный трейсбек уходит в Cloud Logging (logger.exception сам его
         # приложит), а наружу клиенту — нейтральное сообщение без внутренних
@@ -127,8 +153,12 @@ async def chat(request: ChatRequest):
     user_id = request.session_id  # см. комментарий выше
 
     try:
+        # Получаем язык из session state если он там есть, иначе используем ru
+        session = await session_service.get_session(request.session_id)
+        language = session.state.get("language", "ru") if session and hasattr(session, 'state') else "ru"
+        
         reply, image_url = await _run_agent_turn(
-            request.session_id, user_id, request.message
+            request.session_id, user_id, request.message, language=language
         )
     except Exception:
         logger.exception("Ошибка при обработке сообщения в сессии %s", request.session_id)
