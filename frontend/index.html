@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -96,39 +96,6 @@
     max-width:480px;
     margin: 0 0 24px;
     opacity:0.95;
-  }
-
-  /* --- Переключатель языка --- */
-  .lang-switcher{
-    position: fixed;
-    top: max(16px, env(safe-area-inset-top));
-    right: 16px;
-    z-index: 80;
-    display:flex;
-    gap:6px;
-    background: rgba(36,24,50,0.35);
-    padding:6px;
-    border-radius:999px;
-    backdrop-filter: blur(4px);
-  }
-  .lang-btn{
-    font-family:'Baloo 2', sans-serif;
-    font-weight:700;
-    font-size:0.78rem;
-    letter-spacing:0.02em;
-    border:none;
-    background: transparent;
-    color: var(--cream);
-    padding:7px 12px;
-    border-radius:999px;
-    cursor:pointer;
-    touch-action: manipulation;
-    transition: all 0.15s ease;
-  }
-  .lang-btn:hover{ background: rgba(255,255,255,0.15); }
-  .lang-btn.active{
-    background: var(--lime);
-    color: var(--grape-deep);
   }
 
   .panel-wrap{
@@ -552,8 +519,6 @@
     .panel{ width: 94vw; padding: 22px 18px 18px; max-height: 78dvh; }
     .panel-head{ margin: -22px -18px 14px; padding: 22px 18px 8px; }
     h1.display{ font-size: clamp(1.9rem, 9vw, 2.6rem); }
-    .lang-switcher{ top: max(10px, env(safe-area-inset-top)); right: 10px; padding:4px; gap:4px; }
-    .lang-btn{ padding:6px 10px; font-size:0.72rem; }
     .opt-btn{ font-size:0.83rem; padding: 10px 10px; }
     .bubble{ font-size:0.9rem; }
     .fixed-restart{ padding: 11px 22px; font-size:0.86rem; }
@@ -567,14 +532,6 @@
 </style>
 </head>
 <body>
-
-  <div class="lang-switcher" id="langSwitcher">
-    <button class="lang-btn" data-lang="uk" type="button">UA</button>
-    <button class="lang-btn" data-lang="ru" type="button">RU</button>
-    <button class="lang-btn" data-lang="en" type="button">EN</button>
-    <button class="lang-btn" data-lang="pl" type="button">PL</button>
-  </div>
-
   <div class="stage">
     <div id="titleBlock" class="title-block">
       <h1 class="display" id="titleText">WHAT CAT<br>ARE YOU?</h1>
@@ -583,7 +540,7 @@
     <div class="panel-wrap">
       <div class="panel" id="panel">
         <div class="panel-head">
-          <div class="avatar">🐾</div>
+
           <div>
             <!-- Имя питомца — не переводится, остаётся одинаковым на всех языках -->
             <div class="panel-title">Grisha</div>
@@ -639,7 +596,7 @@ let answeredCount = 0;
 
 // Адрес твоего backend на Cloud Run — единственное место, которое нужно
 // поменять, если URL сервиса когда-нибудь изменится
-const API_BASE_URL = "https://backend-278779667457.europe-west1.run.app";
+const API_BASE_URL = "https://backend-453621327073.europe-west1.run.app";
 
 /* ---------------------------------------------------------------------
    ЛОКАЛИЗАЦИЯ ИНТЕРФЕЙСА
@@ -652,28 +609,12 @@ const API_BASE_URL = "https://backend-278779667457.europe-west1.run.app";
    Имя питомца ("Grisha") намеренно не переводится ни в одном языке.
 --------------------------------------------------------------------- */
 const translations = {
-  ru: {
-    title: "КАКОЙ ТЫ<br>КОТИК?",
-    ready: "Готов узнать?",
-    start: "Начать",
-    restart: "Начать заново",
-    loadingFinal: "Рисую твоего котика, это может занять секунд 10-15...",
-    altText: "Твой котик",
-  },
-  uk: {
-    title: "ЯКИЙ ТИ<br>КІТ?",
-    ready: "Готовий дізнатися?",
-    start: "Почати",
-    restart: "Почати спочатку",
-    loadingFinal: "Малюю твого котика, це може зайняти секунд 10-15...",
-    altText: "Твій котик",
-  },
   en: {
     title: "WHAT CAT<br>ARE YOU?",
     ready: "Ready to find out?",
     start: "Start",
     restart: "Start over",
-    loadingFinal: "Drawing your cat, this might take 10-15 seconds...",
+    loadingFinal: "Please, bear with me, drawing your cat, this might take up to 1 minute...",
     altText: "Your cat",
   },
   pl: {
@@ -687,8 +628,8 @@ const translations = {
 };
 
 function detectDefaultLang(){
-  const nav = (navigator.language || "ru").slice(0, 2).toLowerCase();
-  return translations[nav] ? nav : "ru";
+  const nav = (navigator.language || "en").slice(0, 2).toLowerCase();
+  return translations[nav] ? nav : "en";
 }
 
 let currentLang = detectDefaultLang();

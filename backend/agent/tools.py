@@ -4,19 +4,36 @@ Tool-функция, которую ADK-агент вызывает после �
 находится здесь — она полностью детерминирована и не проходит через LLM.
 """
 
+import logging
 import random
+import threading
 import time
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 
 from google import genai
 from google.adk.tools import ToolContext
+from google.api_core.exceptions import ResourceExhausted
 from google.cloud import storage
 
-from .data import ARCHETYPE_NAMES_RU, ARCHETYPE_PROMPTS, BLOCK_1, BLOCK_3, QUESTIONS
+from .data import ARCHETYPE_PROMPTS, BLOCK_1, BLOCK_3, QUESTIONS
 
-PROJECT_ID = "ai-cats-502309"
+PROJECT_ID = "ai-agent-cat"
 LOCATION = "global"
-BUCKET_NAME = "ai-cats-storage"
+BUCKET_NAME = "ai-cats-storage-ca5ual"
+
+# Сколько одновременных вызовов к Gemini допускаем с одного инстанса
+# Cloud Run. Если сюда прилетит concurrency=80, все 80 запросов не
+# должны одновременно долбить Vertex AI — иначе гарантированный 429.
+MAX_CONCURRENT_GENERATIONS = 3
+GENERATION_TIMEOUT_SECONDS = 20.0
+MAX_RETRIES = 4
+BASE_RETRY_DELAY = 1.0
+
+_generation_semaphore = threading.Semaphore(MAX_CONCURRENT_GENERATIONS)
+_executor = ThreadPoolExecutor(max_workers=MAX_CONCURRENT_GENERATIONS + 2)
+
+logger = logging.getLogger(__name__)
 
 
 def _calculate_archetype(answers: list[str]) -> str:
@@ -36,6 +53,33 @@ def _calculate_archetype(answers: list[str]) -> str:
     max_score = max(scores.values())
     winners = [archetype for archetype, score in scores.items() if score == max_score]
     return random.choice(winners)
+
+
+def _call_gemini_with_retry(client: genai.Client, prompt: str):
+    """Вызывает generate_content с exponential backoff на 429 ошибках.
+
+    Квота на Vertex AI считается по окну в минуту, поэтому короткая
+    пауза перед повтором обычно решает проблему без вмешательства юзера.
+    """
+    last_error = None
+    for attempt in range(MAX_RETRIES):
+        try:
+            return client.models.generate_content(
+                model="gemini-3-pro-image",
+                contents=prompt,
+            )
+        except ResourceExhausted as exc:
+            last_error = exc
+            if attempt == MAX_RETRIES - 1:
+                break
+            delay = BASE_RETRY_DELAY * (2 ** attempt) + random.uniform(0, 0.5)
+            logger.warning(
+                "RESOURCE_EXHAUSTED от Vertex AI, попытка %d/%d, retry через %.1fs",
+                attempt + 1, MAX_RETRIES, delay,
+            )
+            time.sleep(delay)
+
+    raise last_error
 
 
 def generate_cat_image(answers: list[str], tool_context: ToolContext) -> dict:
@@ -65,16 +109,38 @@ def generate_cat_image(answers: list[str], tool_context: ToolContext) -> dict:
         }
 
     archetype = _calculate_archetype(answers)
-    archetype_name_ru = ARCHETYPE_NAMES_RU[archetype]
-
     final_prompt = f"{BLOCK_1}\n\n{ARCHETYPE_PROMPTS[archetype]}\n\n{BLOCK_3}"
 
     client = genai.Client(enterprise=True, project=PROJECT_ID, location=LOCATION)
 
-    response = client.models.generate_content(
-        model="gemini-3-pro-image",
-        contents=final_prompt,
-    )
+    # Ограничиваем, сколько запросов одновременно уходит к Vertex AI с
+    # этого инстанса. Если лимит занят — ждём слот, а не бомбим API.
+    acquired = _generation_semaphore.acquire(timeout=GENERATION_TIMEOUT_SECONDS)
+    if not acquired:
+        logger.error("Не дождались свободного слота генерации, все заняты")
+        return {
+            "status": "error",
+            "message": "Сервис сейчас перегружен, попробуйте через минуту",
+        }
+
+    try:
+        future = _executor.submit(_call_gemini_with_retry, client, final_prompt)
+        try:
+            response = future.result(timeout=GENERATION_TIMEOUT_SECONDS)
+        except FutureTimeoutError:
+            logger.error("Таймаут генерации изображения (%.0fs)", GENERATION_TIMEOUT_SECONDS)
+            return {
+                "status": "error",
+                "message": "Генерация заняла слишком много времени, попробуйте ещё раз",
+            }
+        except ResourceExhausted:
+            logger.error("Квота Vertex AI исчерпана после всех попыток retry")
+            return {
+                "status": "error",
+                "message": "Сервис генерации временно недоступен, попробуйте через пару минут",
+            }
+    finally:
+        _generation_semaphore.release()
 
     image_bytes = None
     filename = None
@@ -104,7 +170,6 @@ def generate_cat_image(answers: list[str], tool_context: ToolContext) -> dict:
     result = {
         "status": "success",
         "archetype": archetype,
-        "archetype_name_ru": archetype_name_ru,
         "image_url": image_url,
     }
 
