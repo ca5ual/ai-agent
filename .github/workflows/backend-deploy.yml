@@ -9,7 +9,7 @@ on:
       - '.github/workflows/backend-deploy.yml'
 
 env:
-  GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  GCP_PROJECT_ID: ai-agent-cat
   GCP_REGION: europe-west1
   ARTIFACT_REGISTRY_REPO: ai-cat
   ARTIFACT_REGISTRY_LOCATION: europe-west1
