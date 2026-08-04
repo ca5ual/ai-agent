@@ -33,7 +33,14 @@ jobs:
 
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+
+      - name: Debug - Verify auth
+        run: |
+          gcloud config get-value project
+          gcloud auth list
 
       - name: Upload files to Cloud Storage
         run: |
-         gsutil cp frontend/index.html gs://${{ env.BUCKET_NAME }}/
+          gcloud storage cp frontend/index.html gs://${{ env.BUCKET_NAME }}/
