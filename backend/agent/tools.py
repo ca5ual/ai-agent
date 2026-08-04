@@ -26,9 +26,17 @@ BUCKET_NAME = "ai-cats-storage-ca5ual"
 # Cloud Run. Если сюда прилетит concurrency=80, все 80 запросов не
 # должны одновременно долбить Vertex AI — иначе гарантированный 429.
 MAX_CONCURRENT_GENERATIONS = 3
-GENERATION_TIMEOUT_SECONDS = 20.0
 MAX_RETRIES = 4
 BASE_RETRY_DELAY = 1.0
+
+# Таймаут ожидания свободного слота в семафоре (пока другие генерации
+# не освободят место). Это НЕ таймаут самой генерации.
+SEMAPHORE_WAIT_SECONDS = 20.0
+
+# Таймаут на весь future: сам вызов модели + все retry с backoff.
+# Backoff при MAX_RETRIES=4 может суммарно занять ~1+2+4=7s только на
+# sleep, плюс время самих HTTP-вызовов — поэтому даём запас.
+GENERATION_TIMEOUT_SECONDS = 45.0
 
 _generation_semaphore = threading.Semaphore(MAX_CONCURRENT_GENERATIONS)
 _executor = ThreadPoolExecutor(max_workers=MAX_CONCURRENT_GENERATIONS + 2)
@@ -60,26 +68,37 @@ def _call_gemini_with_retry(client: genai.Client, prompt: str):
 
     Квота на Vertex AI считается по окну в минуту, поэтому короткая
     пауза перед повтором обычно решает проблему без вмешательства юзера.
-    """
-    last_error = None
-    for attempt in range(MAX_RETRIES):
-        try:
-            return client.models.generate_content(
-                model="gemini-3-pro-image",
-                contents=prompt,
-            )
-        except ResourceExhausted as exc:
-            last_error = exc
-            if attempt == MAX_RETRIES - 1:
-                break
-            delay = BASE_RETRY_DELAY * (2 ** attempt) + random.uniform(0, 0.5)
-            logger.warning(
-                "RESOURCE_EXHAUSTED от Vertex AI, попытка %d/%d, retry через %.1fs",
-                attempt + 1, MAX_RETRIES, delay,
-            )
-            time.sleep(delay)
 
-    raise last_error
+    ВАЖНО: эта функция выполняется в отдельном потоке executor'а и сама
+    отвечает за освобождение семафора генерации через `finally`. Так
+    семафор отражает реальную занятость слота у Vertex AI, даже если
+    вызывающий код (generate_cat_image) уже словил таймаут по future
+    и вернул ответ клиенту — поток всё равно доработает retry-цикл и
+    корректно освободит слот, вместо того чтобы "утекать" и создавать
+    лишнюю параллельную нагрузку сверх MAX_CONCURRENT_GENERATIONS.
+    """
+    try:
+        last_error = None
+        for attempt in range(MAX_RETRIES):
+            try:
+                return client.models.generate_content(
+                    model="gemini-3-pro-image",
+                    contents=prompt,
+                )
+            except ResourceExhausted as exc:
+                last_error = exc
+                if attempt == MAX_RETRIES - 1:
+                    break
+                delay = BASE_RETRY_DELAY * (2 ** attempt) + random.uniform(0, 0.5)
+                logger.warning(
+                    "RESOURCE_EXHAUSTED от Vertex AI, попытка %d/%d, retry через %.1fs",
+                    attempt + 1, MAX_RETRIES, delay,
+                )
+                time.sleep(delay)
+
+        raise last_error
+    finally:
+        _generation_semaphore.release()
 
 
 def generate_cat_image(answers: list[str], tool_context: ToolContext) -> dict:
@@ -115,7 +134,7 @@ def generate_cat_image(answers: list[str], tool_context: ToolContext) -> dict:
 
     # Ограничиваем, сколько запросов одновременно уходит к Vertex AI с
     # этого инстанса. Если лимит занят — ждём слот, а не бомбим API.
-    acquired = _generation_semaphore.acquire(timeout=GENERATION_TIMEOUT_SECONDS)
+    acquired = _generation_semaphore.acquire(timeout=SEMAPHORE_WAIT_SECONDS)
     if not acquired:
         logger.error("Не дождались свободного слота генерации, все заняты")
         return {
@@ -123,24 +142,24 @@ def generate_cat_image(answers: list[str], tool_context: ToolContext) -> dict:
             "message": "Сервис сейчас перегружен, попробуйте через минуту",
         }
 
+    # С этого момента ответственность за release() семафора лежит на
+    # _call_gemini_with_retry (см. её docstring) — здесь мы его больше
+    # НЕ освобождаем, даже если поймаем таймаут ниже.
+    future = _executor.submit(_call_gemini_with_retry, client, final_prompt)
     try:
-        future = _executor.submit(_call_gemini_with_retry, client, final_prompt)
-        try:
-            response = future.result(timeout=GENERATION_TIMEOUT_SECONDS)
-        except FutureTimeoutError:
-            logger.error("Таймаут генерации изображения (%.0fs)", GENERATION_TIMEOUT_SECONDS)
-            return {
-                "status": "error",
-                "message": "Генерация заняла слишком много времени, попробуйте ещё раз",
-            }
-        except ResourceExhausted:
-            logger.error("Квота Vertex AI исчерпана после всех попыток retry")
-            return {
-                "status": "error",
-                "message": "Сервис генерации временно недоступен, попробуйте через пару минут",
-            }
-    finally:
-        _generation_semaphore.release()
+        response = future.result(timeout=GENERATION_TIMEOUT_SECONDS)
+    except FutureTimeoutError:
+        logger.error("Таймаут генерации изображения (%.0fs)", GENERATION_TIMEOUT_SECONDS)
+        return {
+            "status": "error",
+            "message": "Генерация заняла слишком много времени, попробуйте ещё раз",
+        }
+    except ResourceExhausted:
+        logger.error("Квота Vertex AI исчерпана после всех попыток retry")
+        return {
+            "status": "error",
+            "message": "Сервис генерации временно недоступен, попробуйте через пару минут",
+        }
 
     image_bytes = None
     filename = None
