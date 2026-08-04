@@ -36,4 +36,4 @@ jobs:
 
       - name: Upload files to Cloud Storage
         run: |
-          gsutil -m rsync -r -d frontend/dist gs://${{ env.BUCKET_NAME }}/
+         gsutil cp frontend/index.html gs://${{ env.BUCKET_NAME }}/
