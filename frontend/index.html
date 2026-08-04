@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -43,6 +43,7 @@
     background-size: 36px 36px;
   }
 
+  /* Панель по умолчанию уже отцентрована — без "съезжания" после старта */
   .stage{
     position:relative;
     min-height:100vh;
@@ -170,6 +171,7 @@
     margin-top:12px;
   }
 
+  /* --- Индикатор загрузки --- */
   .loading-bubble{
     background: white;
   }
@@ -259,6 +261,7 @@
     margin-top:1px;
   }
 
+  /* --- Стартовый экран --- */
   .start-block{
     text-align:center;
     padding: 8px 4px 4px;
@@ -296,7 +299,7 @@
   }
   .restart-btn:hover{ filter: brightness(0.96); }
 
-  /* FLIP CARD STYLES */
+  /* --- Марка с котиком, падает с силой и встаёт на место панели --- */
   .stamp-wrap{
     position: fixed;
     top: -220px;
@@ -307,7 +310,6 @@
     cursor: pointer;
     opacity: 0;
     transform: translateX(-50%);
-    perspective: 1000px;
   }
   .stamp-wrap.dropped{
     animation: stampFallHard 0.85s cubic-bezier(.7,0,.9,1) forwards;
@@ -330,77 +332,21 @@
     80% { transform: translate(4px, -2px); }
   }
   .stamp-wrap:hover{ filter: brightness(1.05); }
-
   .stamp-inner{
     width:100%;
     height:100%;
-    position: relative;
-    transform-style: preserve-3d;
-    transition: transform 0.6s cubic-bezier(.68,.55,.265,1.55);
-  }
-
-  .stamp-inner.flipped{
-    transform: rotateY(180deg);
-  }
-
-  .stamp-side{
-    width:100%;
-    height:100%;
     padding: 10px;
+    background: white;
     border-radius: 16px;
     border: 4px dashed #d8cfe6;
     box-shadow: 0 20px 45px rgba(36,24,50,0.5);
-    position: absolute;
-    backface-visibility: hidden;
-    display: flex;
-    align-items: center;
-    justify-content: center;
   }
-
-  .stamp-front{
-    background: white;
-  }
-
-  .stamp-front img{
-    width: 100%;
-    height: 100%;
+  .stamp-inner img{
+    width:100%;
+    height:100%;
     object-fit: cover;
-    display: block;
+    display:block;
     border-radius: 8px;
-  }
-
-  .stamp-back{
-    background: linear-gradient(135deg, var(--grape) 0%, var(--grape-deep) 100%);
-    transform: rotateY(180deg);
-    padding: 20px;
-    flex-direction: column;
-    gap: 12px;
-    text-align: center;
-  }
-
-  .archetype-name{
-    font-family: 'Baloo 2', sans-serif;
-    font-size: 1.6rem;
-    font-weight: 800;
-    color: var(--lime);
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    margin: 0;
-  }
-
-  .archetype-description{
-    font-size: 0.9rem;
-    color: var(--cream);
-    line-height: 1.4;
-    margin: 0;
-    font-weight: 500;
-  }
-
-  .flip-hint{
-    font-size: 0.75rem;
-    color: rgba(255,248,240,0.7);
-    margin-top: 8px;
-    font-style: italic;
   }
 
   .smoke-puff{
@@ -446,6 +392,7 @@
     pointer-events: auto;
   }
 
+  /* --- Лапа-хулиганка: только царапание когтями --- */
   .paw-wrap{
     position: fixed;
     top: 0;
@@ -464,6 +411,9 @@
     filter: drop-shadow(0 10px 16px rgba(36,24,50,0.4));
   }
 
+  /* Единственная анимация лапы: царапающий слэш через экран.
+     6 вариантов направления (горизонтальные и диагональные из разных
+     углов) задаются через CSS-переменные из JS, см. SLASH_VARIANTS. */
   .paw-wrap.slash{
     animation: pawSlash 0.5s cubic-bezier(.5,0,.5,1);
   }
@@ -572,15 +522,12 @@
     .opt-btn{ font-size:0.83rem; padding: 10px 10px; }
     .bubble{ font-size:0.9rem; }
     .fixed-restart{ padding: 11px 22px; font-size:0.86rem; }
-    .archetype-name{ font-size: 1.4rem; }
-    .archetype-description{ font-size: 0.85rem; }
   }
 
   @media (prefers-reduced-motion: reduce){
     .paw-wrap.slash{ animation:none; opacity:0; }
     .panel.torn{ animation:none; }
     .claw-marks.show{ animation:none; opacity:0; }
-    .stamp-inner{ transition: none; }
   }
 </style>
 </head>
@@ -593,7 +540,9 @@
     <div class="panel-wrap">
       <div class="panel" id="panel">
         <div class="panel-head">
+
           <div>
+            <!-- Имя питомца — не переводится, остаётся одинаковым на всех языках -->
             <div class="panel-title">Grisza</div>
           </div>
         </div>
@@ -607,8 +556,10 @@
         <div class="options" id="optionsArea"></div>
       </div>
     </div>
+
   </div>
 
+  <!-- Лапа-хулиганка: только царапающий слэш, 6 вариантов направления -->
   <div class="paw-wrap" id="pawWrap">
     <svg class="paw" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
       <ellipse cx="50" cy="62" rx="30" ry="26" fill="#6C3CE0"/>
@@ -619,25 +570,19 @@
     </svg>
   </div>
 
+  <!-- Царапины от когтей — появляются при царапающем слэше -->
   <svg class="claw-marks" id="clawMarks" viewBox="0 0 340 340" xmlns="http://www.w3.org/2000/svg">
     <line x1="50" y1="30" x2="130" y2="310" stroke="var(--ink)" stroke-width="7" stroke-linecap="round"/>
     <line x1="110" y1="15" x2="190" y2="325" stroke="var(--ink)" stroke-width="7" stroke-linecap="round"/>
     <line x1="175" y1="5" x2="255" y2="335" stroke="var(--ink)" stroke-width="7" stroke-linecap="round"/>
   </svg>
 
+  <!-- Марка с котиком — появляется и падает сверху после завершения теста -->
   <div class="stamp-wrap" id="stampWrap">
-    <div class="stamp-inner" id="stampInner">
-      <div class="stamp-side stamp-front">
-        <img id="stampImg" src="" alt="">
-      </div>
-      <div class="stamp-side stamp-back">
-        <h2 class="archetype-name" id="archetypeName"></h2>
-        <p class="archetype-description" id="archetypeDesc"></p>
-        <p class="flip-hint">Click to flip back</p>
-      </div>
+    <div class="stamp-inner">
+      <img id="stampImg" src="" alt="">
     </div>
   </div>
-
   <button class="fixed-restart" id="fixedRestartBtn">Start over</button>
 
   <div class="smoke-puff" id="smoke1" style="--sx:-30px; --sy:-8px;"></div>
@@ -648,10 +593,21 @@
 <script>
 let sessionId = null;
 let answeredCount = 0;
-let currentArchetype = null;
 
+// Адрес твоего backend на Cloud Run — единственное место, которое нужно
+// поменять, если URL сервиса когда-нибудь изменится
 const API_BASE_URL = "https://backend-453621327073.europe-west1.run.app";
 
+/* ---------------------------------------------------------------------
+   ЛОКАЛИЗАЦИЯ ИНТЕРФЕЙСА
+   Переключатель языка меняет только статический текст на странице
+   (заголовок, стартовый экран, кнопки, финальный лоадер). Сам диалог с
+   агентом ведётся агентом на выбранном языке — язык передаётся один раз
+   при старте сессии в теле POST /api/session/start как поле "language"
+   (коды: "uk", "ru", "en", "pl"), а бэкенд должен положить его в
+   session.state["language"] перед запуском ADK-агента.
+   Имя питомца ("Grisha") намеренно не переводится ни в одном языке.
+--------------------------------------------------------------------- */
 const translations = {
   en: {
     title: "WHAT CAT<br>ARE YOU?",
@@ -705,10 +661,7 @@ const pawWrap = document.getElementById("pawWrap");
 const clawMarks = document.getElementById("clawMarks");
 const panel = document.getElementById("panel");
 const stampWrap = document.getElementById("stampWrap");
-const stampInner = document.getElementById("stampInner");
 const stampImg = document.getElementById("stampImg");
-const archetypeName = document.getElementById("archetypeName");
-const archetypeDesc = document.getElementById("archetypeDesc");
 const fixedRestartBtn = document.getElementById("fixedRestartBtn");
 const titleBlock = document.getElementById("titleBlock");
 
@@ -718,6 +671,10 @@ let testCompleted = false;
 
 startBtn.addEventListener("click", start);
 
+// Разбирает ответ агента на "сам вопрос" и список вариантов A-H с полным
+// текстом каждого варианта — агент присылает варианты в предсказуемом
+// формате "A) текст", это и парсим, чтобы не дублировать варианты и
+// текстом в пузыре, и кнопками одновременно
 function parseAgentReply(text){
     const lines = text.split("\n");
     const optionRegex = /^\s*([A-H])\)\s*(.+)$/;
@@ -737,6 +694,8 @@ function parseAgentReply(text){
 }
 
 function showQuestion(text, sender="bot"){
+    // Показываем только текущее сообщение, а не копим историю —
+    // окно чата всегда одной высоты, не растёт с каждым вопросом
     chat.innerHTML = "";
     const div = document.createElement("div");
     div.className = "bubble" + (sender === "user" ? " me" : "");
@@ -763,12 +722,25 @@ function showLoading(isFinal){
     chat.appendChild(div);
 }
 
+/* ---------------------------------------------------------------------
+   ЛАПА-ХУЛИГАНКА
+   Единственная анимация — царапающий слэш через экран. 6 вариантов
+   направления: горизонтальный слева-направо, справа-налево, и четыре
+   диагонали между противоположными углами экрана. Вариант выбирается
+   случайно и не повторяется два раза подряд.
+--------------------------------------------------------------------- */
 const SLASH_VARIANTS = [
+    // горизонтально: слева направо
     { sx: "-25vw", sy: "calc(50vh - 85px)", ex: "125vw", ey: "calc(50vh - 95px)", rotA: "-30deg", rotB: "20deg", claw: "80deg" },
+    // горизонтально: справа налево
     { sx: "125vw", sy: "calc(50vh - 75px)", ex: "-25vw", ey: "calc(50vh - 85px)", rotA: "210deg", rotB: "160deg", claw: "-80deg" },
+    // диагональ: верхний левый угол -> нижний правый угол
     { sx: "-25vw", sy: "-20vh", ex: "115vw", ey: "105vh", rotA: "-45deg", rotB: "25deg", claw: "8deg" },
+    // диагональ: нижний правый угол -> верхний левый угол
     { sx: "115vw", sy: "105vh", ex: "-25vw", ey: "-20vh", rotA: "135deg", rotB: "205deg", claw: "188deg" },
+    // диагональ: верхний правый угол -> нижний левый угол
     { sx: "115vw", sy: "-20vh", ex: "-25vw", ey: "105vh", rotA: "225deg", rotB: "155deg", claw: "-42deg" },
+    // диагональ: нижний левый угол -> верхний правый угол
     { sx: "-25vw", sy: "105vh", ex: "115vw", ey: "-20vh", rotA: "45deg", rotB: "-25deg", claw: "138deg" },
 ];
 
@@ -803,29 +775,26 @@ function pawTrouble(){
     pawWrap.classList.remove("slash");
     panel.classList.remove("torn");
     clawMarks.classList.remove("show");
-    void pawWrap.offsetWidth;
+    void pawWrap.offsetWidth; // форсируем reflow, чтобы анимация перезапустилась
     doSlash();
 }
 
-function dropStamp(imageUrl, archetypeInfo, landTop){
+function dropStamp(imageUrl, landTop){
     stampImg.src = imageUrl;
     stampImg.alt = translations[currentLang].altText;
-    
-    archetypeName.textContent = archetypeInfo.name.toUpperCase();
-    archetypeDesc.textContent = archetypeInfo.description;
-    currentArchetype = archetypeInfo;
 
-    stampInner.classList.remove("flipped");
-    void stampInner.offsetWidth;
+    // Ставим марку туда, где реально была панель на этой странице/экране,
+    // а не в захардкоженную точку — иначе на разных экранах она попадёт
+    // то в текст заголовка, то мимо
+    if (typeof landTop === "number") {
+        stampWrap.style.setProperty("--land-top", landTop + "px");
+    }
 
     stampWrap.classList.remove("dropped");
     void stampWrap.offsetWidth;
     stampWrap.classList.add("dropped");
 
-    if (typeof landTop === "number") {
-        stampWrap.style.setProperty("--land-top", landTop + "px");
-    }
-
+    // Момент "удара" — тряска экрана и дым, синхронно с 70% отметкой анимации (0.85s * 0.7 ≈ 595ms)
     const smokeEls = [
         document.getElementById("smoke1"),
         document.getElementById("smoke2"),
@@ -847,18 +816,39 @@ function dropStamp(imageUrl, archetypeInfo, landTop){
         });
     }, 590);
 
+    // Кнопка "начать заново" появляется после того, как всё улеглось
     setTimeout(() => {
         fixedRestartBtn.classList.add("visible");
     }, 900);
 
-    stampWrap.onclick = (e) => {
-        e.stopPropagation();
-        stampInner.classList.toggle("flipped");
+    stampWrap.onclick = async () => {
+        try {
+            // Скачиваем через fetch+blob, а не напрямую через <a download>,
+            // потому что для кросс-доменных ссылок (наш GCS-бакет — другой
+            // домен, чем страница) атрибут download браузер часто игнорирует
+            const res = await fetch(imageUrl);
+            const blob = await res.blob();
+            const blobUrl = URL.createObjectURL(blob);
+
+            const link = document.createElement("a");
+            link.href = blobUrl;
+            link.download = "my-cat.png";
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(blobUrl);
+        } catch (err) {
+            // Если скачивание не удалось (например, CORS на бакете не настроен) —
+            // как минимум открываем картинку в новой вкладке
+            window.open(imageUrl, "_blank");
+        }
     };
 }
 
 async function start(){
     titleBlock.classList.add("hidden");
+    // Убираем заголовок из потока полностью после завершения фейда (0.4s) —
+    // панель уже отцентрована по умолчанию, ей никуда не нужно "съезжать"
     setTimeout(() => { titleBlock.style.display = "none"; }, 400);
     startBlock.style.display = "none";
     chat.style.display = "block";
@@ -882,7 +872,7 @@ async function start(){
 }
 
 function createAnswerButtons(options){
-    if (testCompleted) return;
+    if (testCompleted) return; // страховка: после завершения теста кнопок A-H быть не должно
     optionsArea.innerHTML = "";
 
     options.forEach(opt => {
@@ -897,17 +887,16 @@ function createAnswerButtons(options){
 fixedRestartBtn.addEventListener("click", restart);
 
 function restart(){
+    // Марка падает вниз за пределы экрана и пропадает
     stampWrap.classList.add("exit");
     setTimeout(() => {
         stampWrap.classList.remove("dropped", "exit");
         stampImg.src = "";
-        stampInner.classList.remove("flipped");
     }, 560);
 
     sessionId = null;
     answeredCount = 0;
     testCompleted = false;
-    currentArchetype = null;
     chat.innerHTML = "";
     optionsArea.innerHTML = "";
     chat.style.display = "none";
@@ -917,6 +906,7 @@ function restart(){
     titleBlock.style.display = "block";
     requestAnimationFrame(() => titleBlock.classList.remove("hidden"));
 
+    // Лапа "затягивает" панель обратно в центр с рандомной стороны экрана
     panel.classList.remove("sunk", "enter");
     const fromLeft = Math.random() > 0.5;
     panel.style.setProperty("--enter-x", fromLeft ? "-140vw" : "140vw");
@@ -932,12 +922,14 @@ function restart(){
 }
 
 async function sendAnswer(letter, optionText){
-    if (testCompleted) return;
+    if (testCompleted) return; // страховка: не даём отправить ответ после завершения теста
 
     pawTrouble();
     optionsArea.innerHTML = "";
     answeredCount += 1;
 
+    // 8-й ответ почти наверняка запускает генерацию картинки — показываем
+    // более информативный лоадер вместо обычных "думающих" точек
     showLoading(answeredCount >= 8);
 
     const res = await fetch(
@@ -953,17 +945,11 @@ async function sendAnswer(letter, optionText){
 
     if(data.image_url){
         testCompleted = true;
-        const panelRect = panel.getBoundingClientRect();
+        const panelRect = panel.getBoundingClientRect(); // запоминаем, где была панель, пока она видима
         panel.classList.remove("torn");
         panel.classList.add("sunk");
         setTimeout(() => { chat.style.display = "none"; optionsArea.innerHTML = ""; }, 480);
-        
-        const archetypeInfo = {
-            name: data.archetype || "Unknown",
-            description: data.archetype_description || "A mysterious cat with unique qualities."
-        };
-        
-        dropStamp(data.image_url, archetypeInfo, panelRect.top);
+        dropStamp(data.image_url, panelRect.top);
     } else {
         const parsed = parseAgentReply(data.reply);
         showQuestion(parsed.stem);
