@@ -32,10 +32,18 @@ jobs:
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
-          service_account_email: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }} 
 
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
+
+      - name: Set project ID
+        run: gcloud config set project ${{ env.GCP_PROJECT_ID }}
+
+      - name: Debug - Verify auth before Docker
+        run: |
+          echo "Project: $(gcloud config get-value project)"
+          echo "Account: $(gcloud auth list --filter=status:ACTIVE --format='value(account)')"
 
       - name: Configure Docker for Artifact Registry
         run: |
