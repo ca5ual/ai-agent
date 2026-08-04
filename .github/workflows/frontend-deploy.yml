@@ -9,9 +9,8 @@ on:
       - '.github/workflows/frontend-deploy.yml'
 
 env:
-  GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-  GCP_REGION: europe-west1
   BUCKET_NAME: ai-cat-frontend-ca5ual
+  GCP_PROJECT_ID: ai-agent-cat
 
 jobs:
   deploy:
@@ -29,17 +28,18 @@ jobs:
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
-          service_account_email: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
 
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
-        with:
-          project_id: ${{ env.GCP_PROJECT_ID }}
+
+      - name: Set project ID
+        run: gcloud config set project ${{ env.GCP_PROJECT_ID }}
 
       - name: Debug - Verify auth
         run: |
-          gcloud config get-value project
-          gcloud auth list
+          echo "Project: $(gcloud config get-value project)"
+          echo "Account: $(gcloud auth list --filter=status:ACTIVE --format='value(account)')"
 
       - name: Upload files to Cloud Storage
         run: |
