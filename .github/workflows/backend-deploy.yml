@@ -39,12 +39,7 @@ jobs:
 
       - name: Set project ID
         run: gcloud config set project ${{ env.GCP_PROJECT_ID }}
-
-      - name: Debug - Verify auth before Docker
-        run: |
-          echo "Project: $(gcloud config get-value project)"
-          echo "Account: $(gcloud auth list --filter=status:ACTIVE --format='value(account)')"
-
+        
       - name: Configure Docker for Artifact Registry
         run: |
           gcloud auth configure-docker ${{ env.ARTIFACT_REGISTRY_LOCATION }}-docker.pkg.dev
