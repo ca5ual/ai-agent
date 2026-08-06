@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -43,7 +43,6 @@
     background-size: 36px 36px;
   }
 
-  /* Панель по умолчанию уже отцентрована — без "съезжания" после старта */
   .stage{
     position:relative;
     min-height:100vh;
@@ -171,7 +170,6 @@
     margin-top:12px;
   }
 
-  /* --- Индикатор загрузки --- */
   .loading-bubble{
     background: white;
   }
@@ -214,6 +212,7 @@
     animation: spin 0.8s linear infinite;
   }
   @keyframes spin{ to{ transform: rotate(360deg); } }
+  
   .opt-btn{
     text-align:left;
     background:white;
@@ -261,7 +260,6 @@
     margin-top:1px;
   }
 
-  /* --- Стартовый экран --- */
   .start-block{
     text-align:center;
     padding: 8px 4px 4px;
@@ -299,7 +297,6 @@
   }
   .restart-btn:hover{ filter: brightness(0.96); }
 
-  /* --- Марка с котиком, падает с силой и встаёт на место панели --- */
   .stamp-wrap{
     position: fixed;
     top: -220px;
@@ -392,7 +389,6 @@
     pointer-events: auto;
   }
 
-  /* --- Лапа-хулиганка: только царапание когтями --- */
   .paw-wrap{
     position: fixed;
     top: 0;
@@ -411,9 +407,6 @@
     filter: drop-shadow(0 10px 16px rgba(36,24,50,0.4));
   }
 
-  /* Единственная анимация лапы: царапающий слэш через экран.
-     6 вариантов направления (горизонтальные и диагональные из разных
-     углов) задаются через CSS-переменные из JS, см. SLASH_VARIANTS. */
   .paw-wrap.slash{
     animation: pawSlash 0.5s cubic-bezier(.5,0,.5,1);
   }
@@ -540,9 +533,7 @@
     <div class="panel-wrap">
       <div class="panel" id="panel">
         <div class="panel-head">
-
           <div>
-            <!-- Имя питомца — не переводится, остаётся одинаковым на всех языках -->
             <div class="panel-title">Grisza</div>
           </div>
         </div>
@@ -559,7 +550,6 @@
 
   </div>
 
-  <!-- Лапа-хулиганка: только царапающий слэш, 6 вариантов направления -->
   <div class="paw-wrap" id="pawWrap">
     <svg class="paw" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
       <ellipse cx="50" cy="62" rx="30" ry="26" fill="#6C3CE0"/>
@@ -570,14 +560,12 @@
     </svg>
   </div>
 
-  <!-- Царапины от когтей — появляются при царапающем слэше -->
   <svg class="claw-marks" id="clawMarks" viewBox="0 0 340 340" xmlns="http://www.w3.org/2000/svg">
     <line x1="50" y1="30" x2="130" y2="310" stroke="var(--ink)" stroke-width="7" stroke-linecap="round"/>
     <line x1="110" y1="15" x2="190" y2="325" stroke="var(--ink)" stroke-width="7" stroke-linecap="round"/>
     <line x1="175" y1="5" x2="255" y2="335" stroke="var(--ink)" stroke-width="7" stroke-linecap="round"/>
   </svg>
 
-  <!-- Марка с котиком — появляется и падает сверху после завершения теста -->
   <div class="stamp-wrap" id="stampWrap">
     <div class="stamp-inner">
       <img id="stampImg" src="" alt="">
@@ -593,21 +581,10 @@
 <script>
 let sessionId = null;
 let answeredCount = 0;
+let pollInterval = null;
 
-// Адрес твоего backend на Cloud Run — единственное место, которое нужно
-// поменять, если URL сервиса когда-нибудь изменится
 const API_BASE_URL = "https://backend-453621327073.europe-west1.run.app";
 
-/* ---------------------------------------------------------------------
-   ЛОКАЛИЗАЦИЯ ИНТЕРФЕЙСА
-   Переключатель языка меняет только статический текст на странице
-   (заголовок, стартовый экран, кнопки, финальный лоадер). Сам диалог с
-   агентом ведётся агентом на выбранном языке — язык передаётся один раз
-   при старте сессии в теле POST /api/session/start как поле "language"
-   (коды: "uk", "ru", "en", "pl"), а бэкенд должен положить его в
-   session.state["language"] перед запуском ADK-агента.
-   Имя питомца ("Grisha") намеренно не переводится ни в одном языке.
---------------------------------------------------------------------- */
 const translations = {
   en: {
     title: "WHAT CAT<br>ARE YOU?",
@@ -616,6 +593,7 @@ const translations = {
     restart: "Start over",
     loadingFinal: "Please, bear with me, drawing your cat, this might take up to 1 minute...",
     altText: "Your cat",
+    error: "Something went wrong. Please try again.",
   },
   pl: {
     title: "JAKIM JESTEŚ<br>KOTEM?",
@@ -624,6 +602,7 @@ const translations = {
     restart: "Zacznij od nowa",
     loadingFinal: "Rysuję twojego kota, to może potrwać 10-15 sekund...",
     altText: "Twój kot",
+    error: "Coś poszło nie tak. Spróbuj jeszcze raz.",
   },
 };
 
@@ -671,10 +650,6 @@ let testCompleted = false;
 
 startBtn.addEventListener("click", start);
 
-// Разбирает ответ агента на "сам вопрос" и список вариантов A-H с полным
-// текстом каждого варианта — агент присылает варианты в предсказуемом
-// формате "A) текст", это и парсим, чтобы не дублировать варианты и
-// текстом в пузыре, и кнопками одновременно
 function parseAgentReply(text){
     const lines = text.split("\n");
     const optionRegex = /^\s*([A-H])\)\s*(.+)$/;
@@ -694,8 +669,6 @@ function parseAgentReply(text){
 }
 
 function showQuestion(text, sender="bot"){
-    // Показываем только текущее сообщение, а не копим историю —
-    // окно чата всегда одной высоты, не растёт с каждым вопросом
     chat.innerHTML = "";
     const div = document.createElement("div");
     div.className = "bubble" + (sender === "user" ? " me" : "");
@@ -722,25 +695,20 @@ function showLoading(isFinal){
     chat.appendChild(div);
 }
 
-/* ---------------------------------------------------------------------
-   ЛАПА-ХУЛИГАНКА
-   Единственная анимация — царапающий слэш через экран. 6 вариантов
-   направления: горизонтальный слева-направо, справа-налево, и четыре
-   диагонали между противоположными углами экрана. Вариант выбирается
-   случайно и не повторяется два раза подряд.
---------------------------------------------------------------------- */
+function showError(message){
+    chat.innerHTML = "";
+    const div = document.createElement("div");
+    div.className = "bubble";
+    div.innerHTML = message || translations[currentLang].error;
+    chat.appendChild(div);
+}
+
 const SLASH_VARIANTS = [
-    // горизонтально: слева направо
     { sx: "-25vw", sy: "calc(50vh - 85px)", ex: "125vw", ey: "calc(50vh - 95px)", rotA: "-30deg", rotB: "20deg", claw: "80deg" },
-    // горизонтально: справа налево
     { sx: "125vw", sy: "calc(50vh - 75px)", ex: "-25vw", ey: "calc(50vh - 85px)", rotA: "210deg", rotB: "160deg", claw: "-80deg" },
-    // диагональ: верхний левый угол -> нижний правый угол
     { sx: "-25vw", sy: "-20vh", ex: "115vw", ey: "105vh", rotA: "-45deg", rotB: "25deg", claw: "8deg" },
-    // диагональ: нижний правый угол -> верхний левый угол
     { sx: "115vw", sy: "105vh", ex: "-25vw", ey: "-20vh", rotA: "135deg", rotB: "205deg", claw: "188deg" },
-    // диагональ: верхний правый угол -> нижний левый угол
     { sx: "115vw", sy: "-20vh", ex: "-25vw", ey: "105vh", rotA: "225deg", rotB: "155deg", claw: "-42deg" },
-    // диагональ: нижний левый угол -> верхний правый угол
     { sx: "-25vw", sy: "105vh", ex: "115vw", ey: "-20vh", rotA: "45deg", rotB: "-25deg", claw: "138deg" },
 ];
 
@@ -775,7 +743,7 @@ function pawTrouble(){
     pawWrap.classList.remove("slash");
     panel.classList.remove("torn");
     clawMarks.classList.remove("show");
-    void pawWrap.offsetWidth; // форсируем reflow, чтобы анимация перезапустилась
+    void pawWrap.offsetWidth;
     doSlash();
 }
 
@@ -783,9 +751,6 @@ function dropStamp(imageUrl, landTop){
     stampImg.src = imageUrl;
     stampImg.alt = translations[currentLang].altText;
 
-    // Ставим марку туда, где реально была панель на этой странице/экране,
-    // а не в захардкоженную точку — иначе на разных экранах она попадёт
-    // то в текст заголовка, то мимо
     if (typeof landTop === "number") {
         stampWrap.style.setProperty("--land-top", landTop + "px");
     }
@@ -794,7 +759,6 @@ function dropStamp(imageUrl, landTop){
     void stampWrap.offsetWidth;
     stampWrap.classList.add("dropped");
 
-    // Момент "удара" — тряска экрана и дым, синхронно с 70% отметкой анимации (0.85s * 0.7 ≈ 595ms)
     const smokeEls = [
         document.getElementById("smoke1"),
         document.getElementById("smoke2"),
@@ -816,16 +780,12 @@ function dropStamp(imageUrl, landTop){
         });
     }, 590);
 
-    // Кнопка "начать заново" появляется после того, как всё улеглось
     setTimeout(() => {
         fixedRestartBtn.classList.add("visible");
     }, 900);
 
     stampWrap.onclick = async () => {
         try {
-            // Скачиваем через fetch+blob, а не напрямую через <a download>,
-            // потому что для кросс-доменных ссылок (наш GCS-бакет — другой
-            // домен, чем страница) атрибут download браузер часто игнорирует
             const res = await fetch(imageUrl);
             const blob = await res.blob();
             const blobUrl = URL.createObjectURL(blob);
@@ -838,8 +798,6 @@ function dropStamp(imageUrl, landTop){
             link.remove();
             URL.revokeObjectURL(blobUrl);
         } catch (err) {
-            // Если скачивание не удалось (например, CORS на бакете не настроен) —
-            // как минимум открываем картинку в новой вкладке
             window.open(imageUrl, "_blank");
         }
     };
@@ -847,8 +805,6 @@ function dropStamp(imageUrl, landTop){
 
 async function start(){
     titleBlock.classList.add("hidden");
-    // Убираем заголовок из потока полностью после завершения фейда (0.4s) —
-    // панель уже отцентрована по умолчанию, ей никуда не нужно "съезжать"
     setTimeout(() => { titleBlock.style.display = "none"; }, 400);
     startBlock.style.display = "none";
     chat.style.display = "block";
@@ -872,7 +828,7 @@ async function start(){
 }
 
 function createAnswerButtons(options){
-    if (testCompleted) return; // страховка: после завершения теста кнопок A-H быть не должно
+    if (testCompleted) return;
     optionsArea.innerHTML = "";
 
     options.forEach(opt => {
@@ -887,7 +843,12 @@ function createAnswerButtons(options){
 fixedRestartBtn.addEventListener("click", restart);
 
 function restart(){
-    // Марка падает вниз за пределы экрана и пропадает
+    // Останавливаем polling если был включен
+    if (pollInterval) {
+        clearInterval(pollInterval);
+        pollInterval = null;
+    }
+
     stampWrap.classList.add("exit");
     setTimeout(() => {
         stampWrap.classList.remove("dropped", "exit");
@@ -906,7 +867,6 @@ function restart(){
     titleBlock.style.display = "block";
     requestAnimationFrame(() => titleBlock.classList.remove("hidden"));
 
-    // Лапа "затягивает" панель обратно в центр с рандомной стороны экрана
     panel.classList.remove("sunk", "enter");
     const fromLeft = Math.random() > 0.5;
     panel.style.setProperty("--enter-x", fromLeft ? "-140vw" : "140vw");
@@ -921,15 +881,58 @@ function restart(){
     pawWrap.classList.add("dragIn");
 }
 
+/**
+ * Периодически проверяет статус генерации картинки
+ */
+async function pollGenerationStatus(generationId){
+    if (pollInterval) {
+        clearInterval(pollInterval);
+    }
+
+    pollInterval = setInterval(async () => {
+        try {
+            const res = await fetch(
+                `${API_BASE_URL}/api/generation/${generationId}`
+            );
+            const status = await res.json();
+
+            if (status.status === "success") {
+                clearInterval(pollInterval);
+                pollInterval = null;
+
+                testCompleted = true;
+                const panelRect = panel.getBoundingClientRect();
+                panel.classList.remove("torn");
+                panel.classList.add("sunk");
+                setTimeout(() => { 
+                    chat.style.display = "none"; 
+                    optionsArea.innerHTML = ""; 
+                }, 480);
+                dropStamp(status.image_url, panelRect.top);
+
+            } else if (status.status === "error") {
+                clearInterval(pollInterval);
+                pollInterval = null;
+
+                showError(status.message || translations[currentLang].error);
+                optionsArea.innerHTML = ""; // убираем кнопки ответов
+            }
+            // Если status === "generating", то просто ждём следующую проверку
+        } catch (err) {
+            console.error("Ошибка при проверке статуса генерации:", err);
+            // На случай сетевой ошибки продолжаем polling
+        }
+    }, 800); // проверяем каждые 800ms (можно отрегулировать)
+}
+
 async function sendAnswer(letter, optionText){
-    if (testCompleted) return; // страховка: не даём отправить ответ после завершения теста
+    if (testCompleted) return;
 
     pawTrouble();
     optionsArea.innerHTML = "";
     answeredCount += 1;
 
-    // 8-й ответ почти наверняка запускает генерацию картинки — показываем
-    // более информативный лоадер вместо обычных "думающих" точек
+    // 8-й ответ запускает генерацию
     showLoading(answeredCount >= 8);
 
     const res = await fetch(
@@ -943,14 +946,12 @@ async function sendAnswer(letter, optionText){
 
     const data = await res.json();
 
-    if(data.image_url){
+    // Если агент запустил генерацию, начинаем polling
+    if(data.generation_id){
         testCompleted = true;
-        const panelRect = panel.getBoundingClientRect(); // запоминаем, где была панель, пока она видима
-        panel.classList.remove("torn");
-        panel.classList.add("sunk");
-        setTimeout(() => { chat.style.display = "none"; optionsArea.innerHTML = ""; }, 480);
-        dropStamp(data.image_url, panelRect.top);
+        pollGenerationStatus(data.generation_id);
     } else {
+        // Обычный вопрос — показываем варианты ответов
         const parsed = parseAgentReply(data.reply);
         showQuestion(parsed.stem);
         createAnswerButtons(parsed.options);
