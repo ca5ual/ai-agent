@@ -212,7 +212,7 @@
     animation: spin 0.8s linear infinite;
   }
   @keyframes spin{ to{ transform: rotate(360deg); } }
-  
+
   .opt-btn{
     text-align:left;
     background:white;
@@ -352,6 +352,8 @@
     transform: rotateY(0deg);
   }
 
+  /* FIX: turned into a flex column so the image no longer
+     overlaps/pushes out the "Click to flip" hint */
   .stamp-inner{
     width:100%;
     height:100%;
@@ -360,11 +362,16 @@
     border-radius: 16px;
     border: 4px dashed #d8cfe6;
     box-shadow: 0 20px 45px rgba(36,24,50,0.5);
+    display: flex;
+    flex-direction: column;
   }
 
+  /* FIX: image now fills remaining flex space instead of
+     hard height:100%, which was covering the hint */
   .stamp-inner img{
     width:100%;
-    height:100%;
+    flex: 1 1 auto;
+    min-height: 0;
     object-fit: cover;
     display:block;
     border-radius: 8px;
@@ -405,11 +412,15 @@
     max-height: 100%;
   }
 
+  /* FIX: flex-shrink:0 so the hint always keeps its own line,
+     plus centered text to match the front layout */
   .flip-hint{
     font-size: 0.65rem;
     color: #a89fc4;
     margin-top: 8px;
     font-style: italic;
+    flex-shrink: 0;
+    text-align: center;
   }
 
   body.impact{
@@ -654,11 +665,11 @@
       <!-- Front: Image -->
       <div class="stamp-card-front">
         <div class="stamp-inner">
-          <div class="flip-hint">Click to flip</div>
           <img id="stampImg" src="" alt="">
+          <div class="flip-hint">Click to flip</div>
         </div>
       </div>
-      
+
       <!-- Back: Description -->
       <div class="stamp-card-back">
         <div class="stamp-back-content">
@@ -988,11 +999,11 @@ async function pollGenerationStatus(generationId){
                 const panelRect = panel.getBoundingClientRect();
                 panel.classList.remove("torn");
                 panel.classList.add("sunk");
-                setTimeout(() => { 
-                    chat.style.display = "none"; 
-                    optionsArea.innerHTML = ""; 
+                setTimeout(() => {
+                    chat.style.display = "none";
+                    optionsArea.innerHTML = "";
                 }, 480);
-                
+
                 // Передаём архетип и описание в dropStamp
                 dropStamp(status.image_url, status.archetype, status.description, panelRect.top);
 
