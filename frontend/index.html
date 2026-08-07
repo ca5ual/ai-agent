@@ -297,6 +297,7 @@
   }
   .restart-btn:hover{ filter: brightness(0.96); }
 
+  /* ========== FLIP CARD STYLES ========== */
   .stamp-wrap{
     position: fixed;
     top: -220px;
@@ -307,17 +308,110 @@
     cursor: pointer;
     opacity: 0;
     transform: translateX(-50%);
+    perspective: 1200px;
   }
+
   .stamp-wrap.dropped{
     animation: stampFallHard 0.85s cubic-bezier(.7,0,.9,1) forwards;
   }
+
   @keyframes stampFallHard {
-    0%   { top: -220px; opacity:1; transform: translateX(-50%) rotate(-8deg) scale(0.9); }
-    70%  { top: calc(var(--land-top, 116px) - 8px);  opacity:1; transform: translateX(-50%) rotate(3deg) scale(1.06); }
-    82%  { top: calc(var(--land-top, 116px) + 2px);  opacity:1; transform: translateX(-50%) rotate(-2deg) scale(0.97); }
-    92%  { top: calc(var(--land-top, 116px) - 4px);  opacity:1; transform: translateX(-50%) rotate(1deg) scale(1.01); }
-    100% { top: var(--land-top, 116px);  opacity:1; transform: translateX(-50%) rotate(0deg) scale(1); }
+    0%   { top: -220px; opacity:1; transform: translateX(-50%) rotateZ(-8deg) scale(0.9); }
+    70%  { top: calc(var(--land-top, 116px) - 8px);  opacity:1; transform: translateX(-50%) rotateZ(3deg) scale(1.06); }
+    82%  { top: calc(var(--land-top, 116px) + 2px);  opacity:1; transform: translateX(-50%) rotateZ(-2deg) scale(0.97); }
+    92%  { top: calc(var(--land-top, 116px) - 4px);  opacity:1; transform: translateX(-50%) rotateZ(1deg) scale(1.01); }
+    100% { top: var(--land-top, 116px);  opacity:1; transform: translateX(-50%) rotateZ(0deg) scale(1); }
   }
+
+  .stamp-card{
+    width: 100%;
+    height: 100%;
+    position: relative;
+    transform-style: preserve-3d;
+    transition: transform 0.6s ease;
+  }
+
+  .stamp-card.flipped{
+    transform: rotateY(180deg);
+  }
+
+  .stamp-card-front,
+  .stamp-card-back{
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+  }
+
+  .stamp-card-back{
+    transform: rotateY(180deg);
+  }
+
+  .stamp-card-front{
+    transform: rotateY(0deg);
+  }
+
+  .stamp-inner{
+    width:100%;
+    height:100%;
+    padding: 10px;
+    background: white;
+    border-radius: 16px;
+    border: 4px dashed #d8cfe6;
+    box-shadow: 0 20px 45px rgba(36,24,50,0.5);
+  }
+
+  .stamp-inner img{
+    width:100%;
+    height:100%;
+    object-fit: cover;
+    display:block;
+    border-radius: 8px;
+  }
+
+  .stamp-back-content{
+    width:100%;
+    height:100%;
+    padding: 16px 12px;
+    background: white;
+    border-radius: 16px;
+    border: 4px dashed #d8cfe6;
+    box-shadow: 0 20px 45px rgba(36,24,50,0.5);
+    display:flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    overflow: hidden;
+  }
+
+  .back-title{
+    font-family: 'Baloo 2', sans-serif;
+    font-weight: 800;
+    font-size: clamp(1rem, 4vw, 1.5rem);
+    color: var(--grape-deep);
+    margin-bottom: 12px;
+    line-height: 1.2;
+  }
+
+  .back-description{
+    font-size: clamp(0.75rem, 2vw, 0.9rem);
+    line-height: 1.5;
+    color: var(--ink);
+    padding: 0 8px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    max-height: 100%;
+  }
+
+  .flip-hint{
+    font-size: 0.65rem;
+    color: #a89fc4;
+    margin-top: 8px;
+    font-style: italic;
+  }
+
   body.impact{
     animation: screenShake 0.4s cubic-bezier(.36,.07,.19,.97);
   }
@@ -328,23 +422,8 @@
     60% { transform: translate(-5px, 2px); }
     80% { transform: translate(4px, -2px); }
   }
+
   .stamp-wrap:hover{ filter: brightness(1.05); }
-  .stamp-inner{
-    width:100%;
-    height:100%;
-    padding: 10px;
-    background: white;
-    border-radius: 16px;
-    border: 4px dashed #d8cfe6;
-    box-shadow: 0 20px 45px rgba(36,24,50,0.5);
-  }
-  .stamp-inner img{
-    width:100%;
-    height:100%;
-    object-fit: cover;
-    display:block;
-    border-radius: 8px;
-  }
 
   .smoke-puff{
     position: fixed;
@@ -477,6 +556,7 @@
     0%   { opacity:1; }
     100% { top: 140vh; opacity:0; transform: translateX(-50%) rotate(30deg) scale(0.7); }
   }
+
   .panel.sunk{
     animation: panelSink 0.5s cubic-bezier(.5,0,.85,1) forwards;
   }
@@ -484,6 +564,7 @@
     0%   { transform: translateY(0) scale(1); opacity:1; }
     100% { transform: translateY(140px) scale(0.85); opacity:0; }
   }
+
   .panel.torn{
     animation: panelTorn 0.5s ease-out;
   }
@@ -521,6 +602,7 @@
     .paw-wrap.slash{ animation:none; opacity:0; }
     .panel.torn{ animation:none; }
     .claw-marks.show{ animation:none; opacity:0; }
+    .stamp-card{ transition: none; }
   }
 </style>
 </head>
@@ -534,7 +616,7 @@
       <div class="panel" id="panel">
         <div class="panel-head">
           <div>
-            <div class="panel-title">Grisha</div>
+            <div class="panel-title">Grisza</div>
           </div>
         </div>
 
@@ -566,11 +648,27 @@
     <line x1="175" y1="5" x2="255" y2="335" stroke="var(--ink)" stroke-width="7" stroke-linecap="round"/>
   </svg>
 
+  <!-- FLIP CARD -->
   <div class="stamp-wrap" id="stampWrap">
-    <div class="stamp-inner">
-      <img id="stampImg" src="" alt="">
+    <div class="stamp-card" id="stampCard">
+      <!-- Front: Image -->
+      <div class="stamp-card-front">
+        <div class="stamp-inner">
+          <img id="stampImg" src="" alt="">
+        </div>
+      </div>
+      
+      <!-- Back: Description -->
+      <div class="stamp-card-back">
+        <div class="stamp-back-content">
+          <div class="back-title" id="archetyeTitle"></div>
+          <div class="back-description" id="archetyeDescription"></div>
+          <div class="flip-hint">Click to flip</div>
+        </div>
+      </div>
     </div>
   </div>
+
   <button class="fixed-restart" id="fixedRestartBtn">Start over</button>
 
   <div class="smoke-puff" id="smoke1" style="--sx:-30px; --sy:-8px;"></div>
@@ -594,15 +692,6 @@ const translations = {
     loadingFinal: "Please, bear with me, drawing your cat, this might take up to 1 minute...",
     altText: "Your cat",
     error: "Something went wrong. Please try again.",
-  },
-  pl: {
-    title: "JAKIM JESTEŚ<br>KOTEM?",
-    ready: "Gotowy się dowiedzieć?",
-    start: "Zacznij",
-    restart: "Zacznij od nowa",
-    loadingFinal: "Rysuję twojego kota, to może potrwać 10-15 sekund...",
-    altText: "Twój kot",
-    error: "Coś poszło nie tak. Spróbuj jeszcze raz.",
   },
 };
 
@@ -640,6 +729,7 @@ const pawWrap = document.getElementById("pawWrap");
 const clawMarks = document.getElementById("clawMarks");
 const panel = document.getElementById("panel");
 const stampWrap = document.getElementById("stampWrap");
+const stampCard = document.getElementById("stampCard");
 const stampImg = document.getElementById("stampImg");
 const fixedRestartBtn = document.getElementById("fixedRestartBtn");
 const titleBlock = document.getElementById("titleBlock");
@@ -747,9 +837,13 @@ function pawTrouble(){
     doSlash();
 }
 
-function dropStamp(imageUrl, landTop){
+function dropStamp(imageUrl, archetype, description, landTop){
     stampImg.src = imageUrl;
     stampImg.alt = translations[currentLang].altText;
+
+    // Заполняем обратную сторону карточки
+    document.getElementById("archetyeTitle").textContent = archetype;
+    document.getElementById("archetyeDescription").textContent = description;
 
     if (typeof landTop === "number") {
         stampWrap.style.setProperty("--land-top", landTop + "px");
@@ -784,22 +878,10 @@ function dropStamp(imageUrl, landTop){
         fixedRestartBtn.classList.add("visible");
     }, 900);
 
-    stampWrap.onclick = async () => {
-        try {
-            const res = await fetch(imageUrl);
-            const blob = await res.blob();
-            const blobUrl = URL.createObjectURL(blob);
-
-            const link = document.createElement("a");
-            link.href = blobUrl;
-            link.download = "my-cat.png";
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
-            URL.revokeObjectURL(blobUrl);
-        } catch (err) {
-            window.open(imageUrl, "_blank");
-        }
+    // Обработчик клика для flip карточки
+    stampWrap.onclick = (e) => {
+        e.stopPropagation();
+        stampCard.classList.toggle("flipped");
     };
 }
 
@@ -853,6 +935,7 @@ function restart(){
     setTimeout(() => {
         stampWrap.classList.remove("dropped", "exit");
         stampImg.src = "";
+        stampCard.classList.remove("flipped"); // Сбрасываем flip
     }, 560);
 
     sessionId = null;
@@ -908,21 +991,21 @@ async function pollGenerationStatus(generationId){
                     chat.style.display = "none"; 
                     optionsArea.innerHTML = ""; 
                 }, 480);
-                dropStamp(status.image_url, panelRect.top);
+                
+                // Передаём архетип и описание в dropStamp
+                dropStamp(status.image_url, status.archetype, status.description, panelRect.top);
 
             } else if (status.status === "error") {
                 clearInterval(pollInterval);
                 pollInterval = null;
 
                 showError(status.message || translations[currentLang].error);
-                optionsArea.innerHTML = ""; // убираем кнопки ответов
+                optionsArea.innerHTML = "";
             }
-            // Если status === "generating", то просто ждём следующую проверку
         } catch (err) {
             console.error("Ошибка при проверке статуса генерации:", err);
-            // На случай сетевой ошибки продолжаем polling
         }
-    }, 800); // проверяем каждые 800ms (можно отрегулировать)
+    }, 800);
 }
 
 async function sendAnswer(letter, optionText){

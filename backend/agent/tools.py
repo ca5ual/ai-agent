@@ -1,5 +1,7 @@
 """
-Tool функция теперь не ждёт генерацию, а запускает её в background.
+Tool-функция, которую ADK-агент вызывает после сбора всех 8 ответов.
+Вся логика подсчёта архетипа и вызова модели генерации изображений
+находится здесь — она полностью детерминирована и не проходит через LLM.
 """
 
 import logging
@@ -7,7 +9,7 @@ import random
 import threading
 import time
 from collections import defaultdict
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 from uuid import uuid4
 
 from google import genai
@@ -21,10 +23,19 @@ PROJECT_ID = "ai-agent-cat"
 LOCATION = "global"
 BUCKET_NAME = "ai-cats-storage-ca5ual"
 
+# Сколько одновременных вызовов к Gemini допускаем с одного инстанса
+# Cloud Run. Если сюда прилетит concurrency=80, все 80 запросов не
+# должны одновременно долбить Vertex AI — иначе гарантированный 429.
 MAX_CONCURRENT_GENERATIONS = 3
 MAX_RETRIES = 4
 BASE_RETRY_DELAY = 1.0
+
+# Таймаут ожидания свободного слота в семафоре (пока другие генерации
+# не освободят место). Это НЕ таймаут самой генерации.
 SEMAPHORE_WAIT_SECONDS = 20.0
+
+# Таймаут на весь future: сам вызов модели + все retry с backoff.
+GENERATION_TIMEOUT_SECONDS = 45.0
 
 _generation_semaphore = threading.Semaphore(MAX_CONCURRENT_GENERATIONS)
 _executor = ThreadPoolExecutor(max_workers=MAX_CONCURRENT_GENERATIONS + 2)
@@ -38,7 +49,7 @@ logger = logging.getLogger(__name__)
 
 
 def _calculate_archetype(answers: list[str]) -> str:
-    """Считает баллы по архетипам на основе 8 ответов."""
+    """Считает баллы по архетипам на основе 8 ответов (список букв A-H)."""
     scores = defaultdict(int)
     for question, letter in zip(QUESTIONS, answers):
         letter = letter.strip().upper()
@@ -48,11 +59,72 @@ def _calculate_archetype(answers: list[str]) -> str:
         scores[option["archetype"]] += 1
 
     if not scores:
+        # На случай, если что-то пошло не так со сбором ответов
         return random.choice(list(ARCHETYPE_PROMPTS.keys()))
 
     max_score = max(scores.values())
     winners = [archetype for archetype, score in scores.items() if score == max_score]
     return random.choice(winners)
+
+
+def _generate_archetype_description(client: genai.Client, archetype: str) -> str:
+    """Генерирует описание архетипа через LLM.
+    
+    Вызывается после успешной генерации картинки.
+    Вернёт краткое, весёлое описание что это за тип кота.
+    """
+    prompt = f"""You are a fun cat personality expert. Write a SHORT, FUNNY description (2-3 sentences max) of what the "{archetype}" cat archetype means.
+
+Focus on personality traits and what it says about this person's cat energy.
+
+Write in plain text, no markdown, no emojis. Be playful but concise.
+
+Description:"""
+    
+    try:
+        response = client.models.generate_content(
+            model="gemini-flash-latest",
+            contents=prompt,
+        )
+        
+        if response.candidates and response.candidates[0].content.parts:
+            text = ""
+            for part in response.candidates[0].content.parts:
+                if part.text:
+                    text += part.text
+            return text.strip()
+        
+        return f"You're a {archetype} cat! That's awesome."
+    
+    except Exception as exc:
+        logger.error(f"Ошибка при генерации описания архетипа {archetype}: {exc}")
+        return f"You're a {archetype} cat! That's awesome."
+
+
+def _call_gemini_with_retry(client: genai.Client, prompt: str):
+    """Вызывает generate_content с exponential backoff на 429 ошибках."""
+    try:
+        last_error = None
+        for attempt in range(MAX_RETRIES):
+            try:
+                return client.models.generate_content(
+                    model="gemini-3-pro-image",
+                    contents=prompt,
+                )
+            except ResourceExhausted as exc:
+                last_error = exc
+                if attempt == MAX_RETRIES - 1:
+                    break
+                delay = BASE_RETRY_DELAY * (2 ** attempt) + random.uniform(0, 0.5)
+                logger.warning(
+                    "RESOURCE_EXHAUSTED от Vertex AI, попытка %d/%d, retry через %.1fs",
+                    attempt + 1, MAX_RETRIES, delay,
+                )
+                time.sleep(delay)
+
+        raise last_error
+    finally:
+        _generation_semaphore.release()
 
 
 def _generate_image_background(generation_id: str, client: genai.Client, prompt: str, archetype: str):
@@ -61,13 +133,25 @@ def _generate_image_background(generation_id: str, client: genai.Client, prompt:
     Этот тред сам отвечает за освобождение семафора через finally,
     даже если FastAPI/клиент уже вернул ответ пользователю.
     """
+    # Добавляем явные инструкции чтобы избежать множественных котов
+    enhanced_prompt = f"""{prompt}
+
+CRITICAL REQUIREMENTS FOR THIS IMAGE:
+- GENERATE ONLY ONE CAT in the center of the image
+- The cat must be the main focus and take up most of the image
+- NO OTHER CATS, NO DUPLICATES, NO COMPANIONS
+- NO MIRRORS or images of the cat reflected
+- Simple white or light background
+- The single cat should be centered and prominent
+- Do not include any secondary characters or copies of the cat"""
+    
     try:
         last_error = None
         for attempt in range(MAX_RETRIES):
             try:
                 response = client.models.generate_content(
                     model="gemini-3-pro-image",
-                    contents=prompt,
+                    contents=enhanced_prompt,
                 )
                 
                 # Ищем изображение в ответе
@@ -91,12 +175,16 @@ def _generate_image_background(generation_id: str, client: genai.Client, prompt:
 
                 image_url = f"https://storage.googleapis.com/{BUCKET_NAME}/{filename}"
 
+                # Генерируем описание архетипа
+                description = _generate_archetype_description(client, archetype)
+
                 # Сохраняем результат
                 with _generation_tasks_lock:
                     _generation_tasks[generation_id] = {
                         "status": "success",
                         "archetype": archetype,
                         "image_url": image_url,
+                        "description": description,
                     }
                 
                 logger.info(f"Генерация {generation_id} завершена успешно")
@@ -119,7 +207,7 @@ def _generate_image_background(generation_id: str, client: genai.Client, prompt:
                 "status": "error",
                 "message": "Квота Vertex AI исчерпана, попробуйте через пару минут",
             }
-        logger.error(f"Генерация {generation_id}失败 после всех retry")
+        logger.error(f"Генерация {generation_id} failed после всех retry")
 
     except Exception as exc:
         with _generation_tasks_lock:

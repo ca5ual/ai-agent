@@ -120,107 +120,162 @@ QUESTIONS = [
 ]
 
 # Блок 1 — база кота (константа, не зависит от архетипа)
-BLOCK_1 = """A cat character bust portrait — head and upper torso only, cropped at 
-chest level, no legs, no lower body visible. Oversized big head relative 
-to a moderate, slim torso (not chubby, not overfed, not bloated). The 
-cat's fur is a vivid, richly saturated deep violet-purple color with a 
-bright electric lime-green belly patch and matching lime ear tips, large 
-expressive round eyes with bold dark outlines, small hot-pink nose. Flat 
-sticker-pack art style similar to Telegram and LINE messenger stickers — 
+# ОЧЕНЬ ВАЖНО: явно указываем ОДИН кот в центре, без двойников
+BLOCK_1 = """GENERATE A SINGLE CAT — ONE CAT ONLY, NO DUPLICATES, NO MIRRORS, NO REFLECTIONS.
+
+A cat character bust portrait — head and upper torso only, cropped at 
+chest level, no legs, no lower body visible. The single cat must be 
+CENTERED in the frame and be the ONLY cat visible. Oversized big head 
+relative to a moderate, slim torso (not chubby, not overfed, not bloated). 
+
+The cat's fur is a vivid, richly saturated deep violet-purple color with a 
+bright electric lime-green belly patch and matching lime ear tips. Large 
+expressive round eyes with bold dark outlines, small hot-pink nose. 
+
+Flat sticker-pack art style similar to Telegram and LINE messenger stickers — 
 highly saturated vivid colors, rounded shapes, simple cel-shading with 
 one clear highlight patch on the forehead, cheeks, and nose to suggest 
-volume while staying flat and graphic, no soft gradients on the character 
+volume while staying flat and graphic. No soft gradients on the character 
 itself, no photorealistic lighting, punchy and characterful, instantly 
 recognizable and memorable character design with a bold non-realistic 
-color palette."""
+color palette.
+
+CRITICAL: There must be ONLY ONE cat in this image. No second cat, no mirror, 
+no reflection, no companion cat. Just the single cat centered and prominent."""
 
 # Блок 3 — фон (константа)
 BLOCK_3 = """Plain solid white background, no shadows, no vignette, no gradient on
 background, no white sticker die-cut outline or border around the
-character silhouette, the character should blend directly into the
-white background with no visible edge contour, exaggerated comic
-expression, sticker-pack energy, funny and a little unhinged, not cute
-or wholesome."""
+character silhouette. The character should blend directly into the
+white background with no visible edge contour. 
+
+Exaggerated comic expression, sticker-pack energy, funny and a little unhinged, 
+not cute or wholesome.
+
+REMINDER: This image contains only ONE single cat. No multiple cats, no duplicates."""
 
 # Блок 2 — по архетипам (динамическая часть)
 ARCHETYPE_PROMPTS = {
-    "rebel": """The cat has a tall spiked neon mohawk, a studded leather jacket collar,
+    "rebel": """THIS IS A SINGLE REBELLIOUS CAT — ONE CAT ONLY, CENTERED.
+
+The cat has a tall spiked neon mohawk, a studded leather jacket collar,
 smudged eyeliner, and a defiant smirk with one raised eyebrow, arms
 crossed in classic rebel pose. But pinned to the jacket is a tiny
 laminated badge that reads "CERTIFIED REBEL — see rulebook", and one
 paw is secretly holding a folded instruction manual titled "How To Be
-Punk: 10 Easy Steps" half-hidden behind its back. The safety pin through
-one ear is clearly a clip-on, slightly crooked. Despite the tough
-expression, there's a flicker of anxious eye-contact-checking, like it's
-constantly making sure someone is watching how rebellious it looks.""",
+Punk: 10 Easy Steps" half-hidden behind its back. 
 
-    "hero": """The cat wears a domino mask and a cape that's visibly just a bedsheet
+The safety pin through one ear is clearly a clip-on, slightly crooked. 
+Despite the tough expression, there's a flicker of anxious eye-contact-checking, 
+like it's constantly making sure someone is watching how rebellious it looks.
+
+IMPORTANT: Show only this ONE cat. No duplicates or reflections.""",
+
+    "hero": """THIS IS A SINGLE HEROIC CAT — ONE CAT ONLY, CENTERED.
+
+The cat wears a domino mask and a cape that's visibly just a bedsheet
 still stapled at the corners, with a lopsided star emblem drawn in
 marker on its chest. Pinned proudly across the chest are several
 homemade medals made of bottle caps and yarn ribbons, each crudely
 labeled "RAT CAUGHT #1", "RAT CAUGHT #2", "MOST RATS CAUGHT 2024" —
-clearly self-awarded. One paw is raised in a determined heroic fist —
-but the cat's eyes are heavy with exhaustion, dark circles underneath,
-a thousand-yard stare of someone who has saved the day one too many
-times with zero thanks. A tiny "WORLD'S OKAYEST HERO" trophy sits
-crooked on its head like a party hat. The confident jaw is set, but
-one back paw is visibly twitching from fatigue.""",
+clearly self-awarded. 
 
-    "jester": """The cat wears a colorful three-pointed jester hat with bells and a
+One paw is raised in a determined heroic fist — but the cat's eyes are 
+heavy with exhaustion, dark circles underneath, a thousand-yard stare of 
+someone who has saved the day one too many times with zero thanks. A tiny 
+"WORLD'S OKAYEST HERO" trophy sits crooked on its head like a party hat. 
+
+The confident jaw is set, but one back paw is visibly twitching from fatigue.
+
+IMPORTANT: Show only this ONE cat. No duplicates or reflections.""",
+
+    "jester": """THIS IS A SINGLE JESTING CAT — ONE CAT ONLY, CENTERED.
+
+The cat wears a colorful three-pointed jester hat with bells and a
 diamond-pattern ruff collar, mouth stretched into an enormous exaggerated
 grin showing all teeth. But the eyes are dead flat and unfocused, dark
 circles underneath, clearly not matching the smile at all — like the
-face is on autopilot while the mind checked out hours ago. One paw
-holds a jester scepter with a tiny bell, the other paw is scribbling a
-tally mark on a hidden note reading "days since anyone asked if I'm ok"
-with a long list of marks already there.""",
+face is on autopilot while the mind checked out hours ago. 
 
-    "ruler": """The cat wears a golden jeweled crown that's clearly two sizes too big,
+One paw holds a jester scepter with a tiny bell, the other paw is 
+scribbling a tally mark on a hidden note reading "days since anyone asked 
+if I'm ok" with a long list of marks already there.
+
+IMPORTANT: Show only this ONE cat. No duplicates or reflections.""",
+
+    "ruler": """THIS IS A SINGLE RULING CAT — ONE CAT ONLY, CENTERED.
+
+The cat wears a golden jeweled crown that's clearly two sizes too big,
 tilting down over one eye, and an ornate red velvet cape with fur trim
 that's fraying at the edges. It sits with chin raised in a commanding
-regal pose, one paw gripping a small golden scepter — but the "throne" is
-obviously a cardboard box with "THRONE" scrawled on it in marker, and the
-other paw is white-knuckle gripping the armrest like it's terrified
+regal pose, one paw gripping a small golden scepter — but the "throne" 
+is obviously a cardboard box with "THRONE" scrawled on it in marker.
+
+The other paw is white-knuckle gripping the armrest like it's terrified
 someone will notice the kingdom is falling apart. Stern authoritative
 expression, narrowed eyes, but a single bead of nervous sweat rolling
-down its face.""",
+down its face.
 
-    "diplomat": """The cat wears a crisp white collared shirt, a dark tie, and a formal
+IMPORTANT: Show only this ONE cat. No duplicates or reflections.""",
+
+    "diplomat": """THIS IS A SINGLE DIPLOMATIC CAT — ONE CAT ONLY, CENTERED.
+
+The cat wears a crisp white collared shirt, a dark tie, and a formal
 business suit jacket, paws folded tightly together in a forced composed
 manner. Its mouth is stretched into a strained, tight-lipped smile that
 doesn't reach the eyes — the corners of the mouth twitching slightly
-from the effort of holding it. Eyes are wide open and slightly bloodshot,
-one eyebrow twitching, a subtle nervous tension visible around the eyes,
-like someone forcing composure while internally screaming. Steam is
-visibly puffing out from both ears, and the head glows bright red-orange
-like it's about to boil over, with a small thermometer popping out of
-the top of its head, needle deep in the red zone. The tie is slightly
-crooked and damp with sweat, one paw gripping the other tightly enough
-to show tension.""",
+from the effort of holding it. 
 
-    "creator": """The cat wears a simple leaf wreath crown and a single large leaf draped
+Eyes are wide open and slightly bloodshot, one eyebrow twitching, a subtle 
+nervous tension visible around the eyes, like someone forcing composure while 
+internally screaming. Steam is visibly puffing out from both ears, and the 
+head glows bright red-orange like it's about to boil over, with a small 
+thermometer popping out of the top of its head, needle deep in the red zone. 
+
+The tie is slightly crooked and damp with sweat, one paw gripping the other 
+tightly enough to show tension.
+
+IMPORTANT: Show only this ONE cat. No duplicates or reflections.""",
+
+    "creator": """THIS IS A SINGLE CREATIVE CAT — ONE CAT ONLY, CENTERED.
+
+The cat wears a simple leaf wreath crown and a single large leaf draped
 over one shoulder, one paw dramatically holding a paintbrush aloft in a
 pose of divine inspiration, gazing upward with wide soulful eyes. But
 the canvas in front of it is completely blank except for one tiny dot
 in the corner, and the cat's fur is splattered with paint everywhere
-except the canvas itself. A tiny thought bubble above its head shows a
-crossed-out lightbulb. The expression is a mix of tortured genius and
-mild existential crisis, chewing on the end of the paintbrush anxiously.""",
+except the canvas itself. 
 
-    "dreamer": """The cat has a soft pastel scarf loosely wrapped around its neck, tiny
+A tiny thought bubble above its head shows a crossed-out lightbulb. The 
+expression is a mix of tortured genius and mild existential crisis, chewing 
+on the end of the paintbrush anxiously.
+
+IMPORTANT: Show only this ONE cat. No duplicates or reflections.""",
+
+    "dreamer": """THIS IS A SINGLE DREAMING CAT — ONE CAT ONLY, CENTERED.
+
+The cat has a soft pastel scarf loosely wrapped around its neck, tiny
 stars and a crescent moon floating dreamily around its head, eyes half-
 closed and gazing upward with a serene wistful smile, one paw resting
-thoughtfully near its chin. Meanwhile, small chaos icons are visible at
-the very edge of the frame behind it — a tiny flame, a falling stack of
-papers, a "!!!" alert symbol — completely unnoticed and out of focus.
-The cat remains blissfully, almost suspiciously unbothered by whatever
-is happening just behind it.""",
+thoughtfully near its chin. 
 
-    "explorer": """The cat wears a worn brown adventurer hat tilted rakishly and a small
+Meanwhile, small chaos icons are visible at the very edge of the frame 
+behind it — a tiny flame, a falling stack of papers, a "!!!" alert symbol — 
+completely unnoticed and out of focus. The cat remains blissfully, almost 
+suspiciously unbothered by whatever is happening just behind it.
+
+IMPORTANT: Show only this ONE cat. No duplicates or reflections.""",
+
+    "explorer": """THIS IS A SINGLE EXPLORING CAT — ONE CAT ONLY, CENTERED.
+
+The cat wears a worn brown adventurer hat tilted rakishly and a small
 compass on a strap, grinning with wild reckless excitement, eyes
-squinted toward the horizon, one paw shielding its brow scouting ahead.
+squinted toward the horizon, one paw shielding its brow scouting ahead. 
+
 But it's covered in small comedic injuries — a crossed bandage over one
 eye, a paw in a tiny cast, a visible bruise on one cheek — all clearly
 old and re-bandaged many times, yet the grin is even wider than it
-should be, like the injuries are trophies rather than warnings.""",
+should be, like the injuries are trophies rather than warnings.
+
+IMPORTANT: Show only this ONE cat. No duplicates or reflections.""",
 }
