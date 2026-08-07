@@ -366,8 +366,9 @@
     flex-direction: column;
   }
 
-  /* FIX: image now fills remaining flex space instead of
-     hard height:100%, which was covering the hint */
+  /* Картинка — те же стили, что и в оригинале (object-fit:cover,
+     без доп. обрезки), просто занимает всё место, оставшееся
+     после строки с подписью сверху */
   .stamp-inner img{
     width:100%;
     flex: 1 1 auto;
@@ -375,6 +376,15 @@
     object-fit: cover;
     display:block;
     border-radius: 8px;
+  }
+
+  /* Подпись — отдельная строка НАД картинкой, своя высота,
+     никогда не перекрывает и не сжимается в 0 */
+  .stamp-card-front .flip-hint{
+    flex-shrink: 0;
+    text-align: center;
+    margin-top: 0;
+    padding-bottom: 6px;
   }
 
   .stamp-back-content{
@@ -665,8 +675,8 @@
       <!-- Front: Image -->
       <div class="stamp-card-front">
         <div class="stamp-inner">
-          <img id="stampImg" src="" alt="">
           <div class="flip-hint">Click to flip</div>
+          <img id="stampImg" src="" alt="">
         </div>
       </div>
 
