@@ -1,14 +1,8 @@
-"""
-Tool-функция, которую ADK-агент вызывает после сбора всех 8 ответов.
-Вся логика подсчёта архетипа и вызова модели генерации изображений
-находится здесь — она полностью детерминирована и не проходит через LLM.
-"""
-
 import logging
 import random
 import threading
 import time
-from collections import defaultdict
+from collections import defaultdict, deque
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 from uuid import uuid4
 
@@ -23,25 +17,22 @@ PROJECT_ID = "ai-agent-cat"
 LOCATION = "global"
 BUCKET_NAME = "ai-cats-storage-ca5ual"
 
-# Сколько одновременных вызовов к Gemini допускаем с одного инстанса
-# Cloud Run. Если сюда прилетит concurrency=80, все 80 запросов не
-# должны одновременно долбить Vertex AI — иначе гарантированный 429.
+# Сколько одновременных вызовов к Gemini допускаем
 MAX_CONCURRENT_GENERATIONS = 3
-MAX_RETRIES = 4
-BASE_RETRY_DELAY = 1.0
 
-# Таймаут ожидания свободного слота в семафоре (пока другие генерации
-# не освободят место). Это НЕ таймаут самой генерации.
-SEMAPHORE_WAIT_SECONDS = 20.0
+# Retry при 429 ошибках
+MAX_RETRIES = 5  # ← УВЕЛИЧЕНО с 4
+BASE_RETRY_DELAY = 2.0  # ← УВЕЛИЧЕНО с 1.0
+MAX_BACKOFF_DELAY = 30.0  # ← ДОБАВЛЕНО: максимальная задержка между retry
 
-# Таймаут на весь future: сам вызов модели + все retry с backoff.
-GENERATION_TIMEOUT_SECONDS = 45.0
+GENERATION_TIMEOUT_SECONDS = 120.0  # ← УВЕЛИЧЕНО с 45 (больше времени на всё)
 
 _generation_semaphore = threading.Semaphore(MAX_CONCURRENT_GENERATIONS)
-_executor = ThreadPoolExecutor(max_workers=MAX_CONCURRENT_GENERATIONS + 2)
+_generation_queue = deque()  # Очередь ожидающих задач
+_queue_lock = threading.Lock()
+_executor = ThreadPoolExecutor(max_workers=MAX_CONCURRENT_GENERATIONS + 5)
 
 # Глобальное хранилище статусов генераций
-# Ключ: generation_id, значение: {"status": "...", "result": {...}}
 _generation_tasks = {}
 _generation_tasks_lock = threading.Lock()
 
@@ -59,7 +50,6 @@ def _calculate_archetype(answers: list[str]) -> str:
         scores[option["archetype"]] += 1
 
     if not scores:
-        # На случай, если что-то пошло не так со сбором ответов
         return random.choice(list(ARCHETYPE_PROMPTS.keys()))
 
     max_score = max(scores.values())
@@ -68,11 +58,7 @@ def _calculate_archetype(answers: list[str]) -> str:
 
 
 def _generate_archetype_description(client: genai.Client, archetype: str) -> str:
-    """Генерирует описание архетипа через LLM.
-    
-    Вызывается после успешной генерации картинки.
-    Вернёт краткое, весёлое описание что это за тип кота.
-    """
+    """Генерирует описание архетипа через LLM."""
     prompt = f"""You are a fun cat personality expert. Write a SHORT, FUNNY description (2-3 sentences max) of what the "{archetype}" cat archetype means.
 
 Focus on personality traits and what it says about this person's cat energy.
@@ -101,39 +87,12 @@ Description:"""
         return f"You're a {archetype} cat! That's awesome."
 
 
-def _call_gemini_with_retry(client: genai.Client, prompt: str):
-    """Вызывает generate_content с exponential backoff на 429 ошибках."""
-    try:
-        last_error = None
-        for attempt in range(MAX_RETRIES):
-            try:
-                return client.models.generate_content(
-                    model="gemini-3-pro-image",
-                    contents=prompt,
-                )
-            except ResourceExhausted as exc:
-                last_error = exc
-                if attempt == MAX_RETRIES - 1:
-                    break
-                delay = BASE_RETRY_DELAY * (2 ** attempt) + random.uniform(0, 0.5)
-                logger.warning(
-                    "RESOURCE_EXHAUSTED от Vertex AI, попытка %d/%d, retry через %.1fs",
-                    attempt + 1, MAX_RETRIES, delay,
-                )
-                time.sleep(delay)
-
-        raise last_error
-    finally:
-        _generation_semaphore.release()
-
-
 def _generate_image_background(generation_id: str, client: genai.Client, prompt: str, archetype: str):
-    """Генерирует картинку в background потоке.
+    """Генерирует картинку в background потоке с полноценным retry.
     
     Этот тред сам отвечает за освобождение семафора через finally,
-    даже если FastAPI/клиент уже вернул ответ пользователю.
+    даже если клиент уже вернул ответ пользователю.
     """
-    # Добавляем явные инструкции чтобы избежать множественных котов
     enhanced_prompt = f"""{prompt}
 
 CRITICAL REQUIREMENTS FOR THIS IMAGE:
@@ -141,14 +100,21 @@ CRITICAL REQUIREMENTS FOR THIS IMAGE:
 - The cat must be the main focus and take up most of the image
 - NO OTHER CATS, NO DUPLICATES, NO COMPANIONS
 - NO MIRRORS or images of the cat reflected
-- Simple white or light background
+- Simple white background
 - The single cat should be centered and prominent
 - Do not include any secondary characters or copies of the cat"""
     
     try:
         last_error = None
+        
         for attempt in range(MAX_RETRIES):
             try:
+                # Обновляем статус в задаче
+                with _generation_tasks_lock:
+                    if generation_id in _generation_tasks:
+                        _generation_tasks[generation_id]["status"] = "generating"
+                        _generation_tasks[generation_id]["attempt"] = attempt + 1
+                
                 response = client.models.generate_content(
                     model="gemini-3-pro-image",
                     contents=enhanced_prompt,
@@ -178,7 +144,7 @@ CRITICAL REQUIREMENTS FOR THIS IMAGE:
                 # Генерируем описание архетипа
                 description = _generate_archetype_description(client, archetype)
 
-                # Сохраняем результат
+                # Сохраняем результат ✅
                 with _generation_tasks_lock:
                     _generation_tasks[generation_id] = {
                         "status": "success",
@@ -187,27 +153,31 @@ CRITICAL REQUIREMENTS FOR THIS IMAGE:
                         "description": description,
                     }
                 
-                logger.info(f"Генерация {generation_id} завершена успешно")
+                logger.info(f"✅ Генерация {generation_id} успешна с попытки {attempt + 1}")
                 return
 
             except ResourceExhausted as exc:
                 last_error = exc
                 if attempt == MAX_RETRIES - 1:
                     break
-                delay = BASE_RETRY_DELAY * (2 ** attempt) + random.uniform(0, 0.5)
+                
+                # Exponential backoff с джиттером, но не больше MAX_BACKOFF_DELAY
+                delay = min(BASE_RETRY_DELAY * (2 ** attempt), MAX_BACKOFF_DELAY)
+                delay += random.uniform(0, 1)  # джиттер
+                
                 logger.warning(
-                    f"RESOURCE_EXHAUSTED попытка {attempt + 1}/{MAX_RETRIES}, "
-                    f"retry через {delay:.1f}s для {generation_id}"
+                    f"⚠️ RESOURCE_EXHAUSTED {generation_id}: попытка {attempt + 1}/{MAX_RETRIES}, "
+                    f"ждём {delay:.1f}s перед retry..."
                 )
                 time.sleep(delay)
 
-        # Если все попытки исчерпаны
+        # Все попытки исчерпаны ❌
         with _generation_tasks_lock:
             _generation_tasks[generation_id] = {
                 "status": "error",
-                "message": "Квота Vertex AI исчерпана, попробуйте через пару минут",
+                "message": "Google API quota exhausted. Retried 5 times. Please try again in a few minutes.",
             }
-        logger.error(f"Генерация {generation_id} failed после всех retry")
+        logger.error(f"❌ Генерация {generation_id} failed после {MAX_RETRIES} попыток")
 
     except Exception as exc:
         with _generation_tasks_lock:
@@ -215,10 +185,11 @@ CRITICAL REQUIREMENTS FOR THIS IMAGE:
                 "status": "error",
                 "message": str(exc),
             }
-        logger.exception(f"Неожиданная ошибка при генерации {generation_id}")
+        logger.exception(f"❌ Неожиданная ошибка при генерации {generation_id}")
 
     finally:
         _generation_semaphore.release()
+        logger.info(f"🔓 Семафор освобождён для {generation_id}")
 
 
 def generate_cat_image(answers: list[str], tool_context: ToolContext) -> dict:
@@ -254,27 +225,19 @@ def generate_cat_image(answers: list[str], tool_context: ToolContext) -> dict:
         _generation_tasks[generation_id] = {
             "status": "generating",
             "started_at": time.time(),
+            "attempt": 0,
         }
 
-    # Ждём свободный слот в семафоре (с таймаутом)
-    acquired = _generation_semaphore.acquire(timeout=SEMAPHORE_WAIT_SECONDS)
-    if not acquired:
-        logger.error(f"Не дождались свободного слота для {generation_id}")
-        with _generation_tasks_lock:
-            _generation_tasks[generation_id] = {
-                "status": "error",
-                "message": "Сервис перегружен, попробуйте через минуту",
-            }
-        return {
-            "status": "error",
-            "message": "Сервис перегружен, попробуйте через минуту",
-        }
+    # Новые запросы будут ждать, пока не освободится слот
+    logger.info(f"⏳ Задача {generation_id} ждёт свободного слота...")
+    _generation_semaphore.acquire()  # ← Блокирующее ожидание, БЕЗ timeout
+    logger.info(f"🟢 Задача {generation_id} получила слот, запускаем генерацию")
 
     # Запускаем генерацию в background потоке
     client = genai.Client(enterprise=True, project=PROJECT_ID, location=LOCATION)
     _executor.submit(_generate_image_background, generation_id, client, final_prompt, archetype)
 
-    # Сохраняем generation_id в состояние, чтобы не запустить генерацию ещё раз
+    # Сохраняем generation_id в состояние
     tool_context.state["generation_id"] = generation_id
 
     return {
@@ -284,24 +247,18 @@ def generate_cat_image(answers: list[str], tool_context: ToolContext) -> dict:
 
 
 def get_generation_status(generation_id: str) -> dict:
-    """Проверяет статус генерации по ID.
-    
-    Вызывается из FastAPI endpoint'а.
-    """
+    """Проверяет статус генерации по ID."""
     with _generation_tasks_lock:
         if generation_id not in _generation_tasks:
             return {
                 "status": "not_found",
-                "message": f"Генерация {generation_id} не найдена",
+                "message": f"Generation {generation_id} not found",
             }
         return _generation_tasks[generation_id].copy()
 
 
-def cleanup_old_generations(max_age_seconds: int = 3600):
-    """Очищает старые записи о генерациях (чтобы не утечка памяти).
-    
-    Можно вызывать периодически из FastAPI в background task.
-    """
+def cleanup_old_generations(max_age_seconds: int = 7200):  # ← Увеличено с 3600
+    """Очищает старые записи о генерациях."""
     now = time.time()
     with _generation_tasks_lock:
         to_delete = [
@@ -312,4 +269,4 @@ def cleanup_old_generations(max_age_seconds: int = 3600):
             del _generation_tasks[gen_id]
     
     if to_delete:
-        logger.info(f"Очищены {len(to_delete)} старых генераций")
+        logger.info(f"🧹 Очищены {len(to_delete)} старых генераций")
