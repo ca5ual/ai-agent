@@ -65,6 +65,7 @@ class GenerationStatusResponse(BaseModel):
     status: str  # "generating", "success", "error", "not_found"
     archetype: str | None = None
     image_url: str | None = None
+    description: str | None = None  # Описание архетипа от LLM
     message: str | None = None
 
 
@@ -146,15 +147,16 @@ async def chat(request: ChatRequest):
 async def check_generation_status(generation_id: str):
     """Проверяет статус генерации изображения.
     
-    Клиент может вызывать этот endpoint периодически (например, каждые 500ms),
+    Клиент может вызывать этот endpoint периодически (например, каждые 800ms),
     пока статус не станет "success" или "error".
     
     Returns:
         {
             "status": "generating" | "success" | "error" | "not_found",
             "image_url": "https://..." (если успешно),
-            "message": "Описание ошибки" (если ошибка),
-            "archetype": "NameOfArchetype" (если успешно)
+            "archetype": "NameOfArchetype" (если успешно),
+            "description": "AI-generated description" (если успешно),
+            "message": "Описание ошибки" (если ошибка)
         }
     """
     try:
