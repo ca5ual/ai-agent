@@ -77,7 +77,7 @@ def _generate_archetype_description(client: genai.Client, archetype: str) -> str
 
 Focus on personality traits and what it says about this person's cat energy.
 
-Write in plain text, no markdown, no emojis. Be playful but concise.
+Write in VERY plain text, no markdown, no emojis. Don't use difficult words at all. Imagine that you're trying to explain something complex to children. Be playful but concise.
 
 Description:"""
     
