@@ -70,11 +70,6 @@ class GenerationStatusResponse(BaseModel):
 
 
 async def _run_agent_turn(session_id: str, user_id: str, message: str) -> tuple[str, str | None]:
-    """Прогоняет сообщение пользователя через агента.
-    
-    Теперь возвращает generation_id вместо image_url, так как картинка
-    будет готова позже.
-    """
     content = types.Content(role="user", parts=[types.Part(text=message)])
 
     final_text = ""
