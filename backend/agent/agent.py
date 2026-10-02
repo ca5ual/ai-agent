@@ -112,7 +112,7 @@ Use them exactly:
 
 root_agent = Agent(
     name="cat_personality_agent",
-    model="gemini-flash-latest",
+    model="gemini-3.5-flash",
     instruction=INSTRUCTION,
     tools=[generate_cat_image],
 )
